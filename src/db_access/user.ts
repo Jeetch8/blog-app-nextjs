@@ -7,9 +7,10 @@ export const getUserById = async (id: string) => {
   return user;
 };
 
-export const getUserProfileByUsername = async (username: string) => {
-  const profile = await prisma.user_Profile.findUnique({
+export const getUserProfilePageInfo = async (username: string) => {
+  const user = await prisma.user.findUnique({
     where: { username },
+    include: { profile: true },
   });
-  return profile;
+  return user;
 };

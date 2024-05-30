@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: { categoryId: string; page: number } }
 ) {
   const { categoryId, page } = params;
-  const res = await prisma.bookmark_Category_Blog.findMany({
+  const res = await prisma.bookmark_category_blog.findMany({
     skip: (page - 1) * 15,
     take: 15,
     where: {

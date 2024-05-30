@@ -8,24 +8,23 @@ datasource db {
 }
 
 model User_Profile {
-  id                 String   @id @default(cuid())
-  userId             String   @unique
-  username           String?  @unique
-  bio                String?
-  tagline            String?
-  location           String?
-  website            String?
-  followers_count    Int      @default(0)
-  following_count    Int      @default(0)
-  website_url        String?
-  github_url         String?
-  linkedin_url       String?
-  twitter_url        String?
-  available_for_hire Boolean  @default(false)
-  tech_stack         String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @default(now())
-  user               User     @relation(fields: [userId], references: [id])
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  bio             String?
+  tagline         String?
+  location        String?
+  website         String?
+  followers_count Int      @default(0)
+  following_count Int      @default(0)
+  website_url     String?
+  github_url      String?
+  linkedin_url    String?
+  twitter_url     String?
+  available_for   String?
+  tech_stack      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id])
 
   @@map("profiles")
 }
@@ -33,6 +32,7 @@ model User_Profile {
 model User {
   id                String              @id @default(uuid())
   name              String
+  username          String?             @unique
   email             String?             @unique
   password          String?
   emailVerified     DateTime?           @map("email_verified")

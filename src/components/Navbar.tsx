@@ -15,19 +15,16 @@ import MenuItem from '@mui/material/MenuItem';
 import AdbIcon from '@mui/icons-material/Adb';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button } from '@mui/material';
+import { Button, Stack } from '@mui/material';
+import { signOut } from 'next-auth/react';
+import RssFeedIcon from '@mui/icons-material/RssFeed';
 
-const pages = [
-  { title: 'Profile', path: '/profile' },
-  { title: 'Bookmarks', path: '/bookmarks' },
-  { title: 'Write', path: '/write' },
-  { title: 'Stats', path: '/stats' },
-];
 const settings = [
   { title: 'Profile', path: '/profile' },
-  { title: 'Account', path: '/account' },
-  { title: 'Dashboard', path: '/dashboard' },
-  { title: 'Logout', path: '/logout' },
+  { title: 'Write', path: '/write' },
+  { title: 'Bookmarks', path: '/bookmarks' },
+  { title: 'Stats', path: '/stats' },
+  { title: 'Settings', path: '/settings' },
 ];
 
 function Navbar() {
@@ -39,9 +36,6 @@ function Navbar() {
   );
   const router = useRouter();
 
-  const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorElNav(event.currentTarget);
-  };
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElUser(event.currentTarget);
   };
@@ -62,94 +56,34 @@ function Navbar() {
   return (
     <AppBar position="static" sx={{ mb: 2 }}>
       <Container maxWidth="xl">
-        <Toolbar disableGutters>
-          <AdbIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
-          <Typography
-            variant="h6"
-            noWrap
-            component="a"
-            onClick={() => router.push('/')}
-            sx={{
-              mr: 2,
-              display: { xs: 'none', md: 'flex' },
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              letterSpacing: '.3rem',
-              color: 'inherit',
-              textDecoration: 'none',
-            }}
-          >
-            LOGO
-          </Typography>
-
-          <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
-            <IconButton
-              size="large"
-              aria-label="account of current user"
-              aria-controls="menu-appbar"
-              aria-haspopup="true"
-              onClick={handleOpenNavMenu}
-              color="inherit"
-            >
-              <MenuIcon />
-            </IconButton>
-            <Menu
-              id="menu-appbar"
-              anchorEl={anchorElNav}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'left',
-              }}
-              keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'left',
-              }}
-              open={Boolean(anchorElNav)}
-              onClose={handleCloseNavMenu}
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ padding: '10px' }}
+        >
+          <Stack direction="row" alignItems="center" gap={0}>
+            <Typography
+              variant="h5"
+              noWrap
+              component="a"
+              href="#app-bar-with-responsive-menu"
               sx={{
-                display: { xs: 'block', md: 'none' },
+                mr: 2,
+                flexGrow: 1,
+                fontFamily: 'monospace',
+                fontWeight: 700,
+                letterSpacing: '.3rem',
+                color: 'inherit',
+                textDecoration: 'none',
               }}
             >
-              {pages.map((page) => (
-                <MenuItem key={page.title} onClick={handleCloseNavMenu}>
-                  <Link href={page.path}>{page.title}</Link>
-                </MenuItem>
-              ))}
-            </Menu>
-          </Box>
-          <AdbIcon sx={{ display: { xs: 'flex', md: 'none' }, mr: 1 }} />
-          <Typography
-            variant="h5"
-            noWrap
-            component="a"
-            href="#app-bar-with-responsive-menu"
-            sx={{
-              mr: 2,
-              display: { xs: 'flex', md: 'none' },
-              flexGrow: 1,
-              fontFamily: 'monospace',
-              fontWeight: 700,
-              letterSpacing: '.3rem',
-              color: 'inherit',
-              textDecoration: 'none',
-            }}
-          >
-            LOGO
-          </Typography>
-          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
-            {pages.map((page) => (
-              <Button
-                key={page.title}
-                onClick={() => router.push(page.path)}
-                sx={{ my: 2, color: 'white', display: 'block' }}
-              >
-                {page.title}
-              </Button>
-            ))}
-          </Box>
+              Blog
+            </Typography>
+            <RssFeedIcon />
+          </Stack>
 
-          <Box sx={{ flexGrow: 0 }}>
+          <Box>
             <Tooltip title="Open settings">
               <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                 <Avatar alt="Remy Sharp" src="/static/images/avatar/2.jpg" />
@@ -179,9 +113,19 @@ function Navbar() {
                   <Typography textAlign="center">{setting.title}</Typography>
                 </MenuItem>
               ))}
+              <MenuItem
+                onClick={() =>
+                  signOut({
+                    redirect: true,
+                    callbackUrl: '/auth/signin',
+                  })
+                }
+              >
+                Logout
+              </MenuItem>
             </Menu>
           </Box>
-        </Toolbar>
+        </Stack>
       </Container>
     </AppBar>
   );

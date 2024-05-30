@@ -25,7 +25,7 @@ const AddToBookmarSelect = () => {
   // };
 
   return (
-    <Box>
+    <Box sx={{ color: 'text.primary' }}>
       <IconButton onClick={() => setIsSelectOpen(!isSelectOpen)}>
         <BookmarkBorderIcon />
       </IconButton>

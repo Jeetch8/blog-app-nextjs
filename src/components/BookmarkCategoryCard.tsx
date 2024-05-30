@@ -1,34 +1,33 @@
-import Card from "@mui/material/Card";
-import CardHeader from "@mui/material/CardHeader";
-import CardMedia from "@mui/material/CardMedia";
-import CardContent from "@mui/material/CardContent";
-import Avatar from "@mui/material/Avatar";
-import IconButton from "@mui/material/IconButton";
-import Typography from "@mui/material/Typography";
-import { red } from "@mui/material/colors";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import { Button, CardActions, Menu, MenuItem, Stack } from "@mui/material";
-import { useState } from "react";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import { CustomAxiosAuth } from "../utils/CustomAxios";
-import { useGlobalContext } from "../context/GlobalContext";
-import BookmarkCategoryModal from "./Modals/BookmarkCategoryModal";
-import { bookmark_category } from "../pages/Bookmark";
-import toast from "react-hot-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+'use client';
+
+import Card from '@mui/material/Card';
+import CardHeader from '@mui/material/CardHeader';
+import CardMedia from '@mui/material/CardMedia';
+import CardContent from '@mui/material/CardContent';
+import Avatar from '@mui/material/Avatar';
+import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
+import { red } from '@mui/material/colors';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { Button, CardActions, Menu, MenuItem, Stack } from '@mui/material';
+import { useState } from 'react';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { CustomAxiosAuth } from '../utils/CustomAxios';
+import BookmarkCategoryModal from './Modals/BookmarkCategoryModal';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { Snackbar } from '@mui/material';
 
 export default function BookmarkCategoryCard({
   bookmark_category,
 }: {
-  bookmark_category: bookmark_category;
+  bookmark_category: any;
 }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
-  const { user } = useGlobalContext();
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const { data } = useSession();
+  const router = useRouter();
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -38,15 +37,15 @@ export default function BookmarkCategoryCard({
 
   const handleCategoryDelete = async () => {
     setAnchorEl(null);
-    const res = await CustomAxiosAuth(user?.token as string).delete(
-      "/bookmark/category/" + bookmark_category.id
-    );
-    if (res.data.success) {
-      toast.success("Category Deleted Successfully");
-      queryClient.invalidateQueries("bookmarkCategory");
-    } else {
-      toast.error("Error Deleting Category");
-    }
+    // const res = await CustomAxiosAuth(user?.token as string).delete(
+    //   "/bookmark/category/" + bookmark_category.id
+    // );
+    // if (res.data.success) {
+    //   toast.success("Category Deleted Successfully");
+    //   queryClient.invalidateQueries("bookmarkCategory");
+    // } else {
+    //   toast.error("Error Deleting Category");
+    // }
   };
 
   return (
@@ -62,9 +61,9 @@ export default function BookmarkCategoryCard({
             <IconButton
               aria-label="settings"
               id="demo-positioned-button"
-              aria-controls={open ? "demo-positioned-menu" : undefined}
+              aria-controls={open ? 'demo-positioned-menu' : undefined}
               aria-haspopup="true"
-              aria-expanded={open ? "true" : undefined}
+              aria-expanded={open ? 'true' : undefined}
               onClick={handleClick}
             >
               <MoreVertIcon />
@@ -76,16 +75,16 @@ export default function BookmarkCategoryCard({
               open={open}
               onClose={handleClose}
               anchorOrigin={{
-                vertical: "top",
-                horizontal: "center",
+                vertical: 'top',
+                horizontal: 'center',
               }}
               transformOrigin={{
-                vertical: "top",
-                horizontal: "left",
+                vertical: 'top',
+                horizontal: 'left',
               }}
             >
               <BookmarkCategoryModal
-                modalType={"edit"}
+                modalType={'edit'}
                 categoryId={bookmark_category.id}
                 FormValues={{
                   name: bookmark_category.name,
@@ -102,44 +101,44 @@ export default function BookmarkCategoryCard({
         subheader={bookmark_category.createdAt}
       />
       <CardMedia>
-        <Stack direction={"row"}>
+        <Stack direction={'row'}>
           <img
             defaultValue={
-              "https://th.bing.com/th/id/OIP.fXX3ufl2IoAOPxsewn8uHgHaE7?w=1700&h=1133&rs=1&pid=ImgDetMain"
+              'https://th.bing.com/th/id/OIP.fXX3ufl2IoAOPxsewn8uHgHaE7?w=1700&h=1133&rs=1&pid=ImgDetMain'
             }
             src={
               bookmark_category.category_blog[0]?.blog.banner_img.split(
-                ","
-              )[0] + "-200x200.jpeg"
+                ','
+              )[0] + '-200x200.jpeg'
             }
             alt=""
             height={100}
           />
           <img
             defaultValue={
-              "https://th.bing.com/th/id/OIP.fXX3ufl2IoAOPxsewn8uHgHaE7?w=1700&h=1133&rs=1&pid=ImgDetMain"
+              'https://th.bing.com/th/id/OIP.fXX3ufl2IoAOPxsewn8uHgHaE7?w=1700&h=1133&rs=1&pid=ImgDetMain'
             }
             src={
               bookmark_category.category_blog[1]?.blog.banner_img.split(
-                ","
-              )[0] + "-200x200.jpeg"
+                ','
+              )[0] + '-200x200.jpeg'
             }
             alt=""
             height={100}
-            style={{ marginLeft: "-30px" }}
+            style={{ marginLeft: '-30px' }}
           />
           <img
             defaultValue={
-              "https://th.bing.com/th/id/OIP.fXX3ufl2IoAOPxsewn8uHgHaE7?w=1700&h=1133&rs=1&pid=ImgDetMain"
+              'https://th.bing.com/th/id/OIP.fXX3ufl2IoAOPxsewn8uHgHaE7?w=1700&h=1133&rs=1&pid=ImgDetMain'
             }
             src={
               bookmark_category.category_blog[2]?.blog.banner_img.split(
-                ","
-              )[0] + "-200x200.jpeg"
+                ','
+              )[0] + '-200x200.jpeg'
             }
             alt=""
             height={100}
-            style={{ marginLeft: "-30px" }}
+            style={{ marginLeft: '-30px' }}
           />
         </Stack>
       </CardMedia>
@@ -149,7 +148,7 @@ export default function BookmarkCategoryCard({
         </Typography>
       </CardContent>
       <CardActions
-        onClick={() => navigate("/bookmark/" + bookmark_category.id)}
+        onClick={() => router.push('/bookmark/' + bookmark_category.id)}
       >
         <Button size="small">Learn More</Button>
       </CardActions>

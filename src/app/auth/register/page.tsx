@@ -13,14 +13,13 @@ async function getProviders() {
   return data;
 }
 
-export default async function SignInOptions() {
+export default async function SignUpOptions() {
   const resp: ReturnType<typeof getProviders> = (await getProviders()) || {};
 
   return (
     <Container
       maxWidth="sm"
       sx={{
-        color: 'text.primary',
         minHeight: '70vh',
         display: 'flex',
         flexDirection: 'column',
@@ -29,12 +28,12 @@ export default async function SignInOptions() {
     >
       <Stack spacing={4} alignItems="center">
         <Typography variant="h4" component="h1" fontWeight="bold">
-          Welcome back!
+          Registter
         </Typography>
         <Stack spacing={2} width="400px">
-          <GoogleButton text="Sign In with Google" />
-          <EmailButton text="Sign In with Email" type="signin" />
-          <GithubButton text="Sign In with Github" />
+          <GoogleButton text="Sign Up with Google" />
+          <EmailButton text="Sign Up with Email" type="register" />
+          <GithubButton text="Sign Up with Github" />
         </Stack>
       </Stack>
     </Container>

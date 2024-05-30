@@ -1,5 +1,3 @@
-import '@/app/globals.css';
-
 import { Inter } from 'next/font/google';
 import Provider from '@/components/Provider';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v14-appRouter';
@@ -21,8 +19,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <CssBaseline />
+      <body className={inter.className} style={{ background: '#192231' }}>
+        <CssBaseline enableColorScheme />
         <AppRouterCacheProvider>
           <ThemeProvider theme={theme}>
             <Navbar />

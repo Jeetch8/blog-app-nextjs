@@ -1,102 +1,125 @@
 'use client';
 
+import { useState } from 'react';
 import CryptoJS from 'crypto-js';
 import { signIn } from 'next-auth/react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import {
+  TextField,
+  Button,
+  Container,
+  Typography,
+  Box,
+  InputAdornment,
+  IconButton,
+} from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 
-import Alert from '@/components/Alert';
+const schema = z.object({
+  email: z.string().email({ message: 'Invalid email address' }),
+  password: z
+    .string()
+    .min(6, { message: 'Password must be at least 6 characters' }),
+});
 
-type LoginFormProps = {
-  email: string;
-  password: string;
-};
-
-const handleSubmitForm = (data: { email: string; password: string }) => {
-  signIn('credentials', {
-    email: data.email,
-    password: CryptoJS.MD5(data.password),
-  });
-};
+type LoginFormProps = z.infer<typeof schema>;
 
 export default function EmailLoginForm() {
+  const [showPassword, setShowPassword] = useState(false);
   const {
-    register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormProps>({
-    mode: 'onBlur',
-    reValidateMode: 'onChange',
+    resolver: zodResolver(schema),
     defaultValues: {
       email: '',
       password: '',
     },
   });
 
-  return (
-    <div className="mt-5 sm:mx-auto sm:w-full sm:max-w-sm">
-      <Alert />
-      <form
-        className="mt-5 space-y-6"
-        onSubmit={handleSubmit(handleSubmitForm)}
-      >
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium leading-6 text-gray-900"
-          >
-            Email address
-          </label>
-          <div className="mt-2">
-            <input
-              {...register('email', {
-                required: 'Email is required',
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: 'Invalid email address',
-                },
-              })}
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            />
-          </div>
-          <span className="text-red-500 text-xs">{errors.email?.message}</span>
-        </div>
+  const onSubmit = (data: LoginFormProps) => {
+    signIn('credentials', {
+      email: data.email,
+      password: CryptoJS.MD5(data.password).toString(),
+    });
+  };
 
-        <div>
-          <div className="flex items-center justify-between">
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium leading-6 text-gray-900"
-            >
-              Password
-            </label>
-          </div>
-          <div className="mt-2">
-            <input
-              {...register('password', { required: 'Password is required' })}
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            />
-          </div>
-          <span className="text-red-500 text-xs">
-            {errors.password?.message}
-          </span>
-        </div>
-        <div>
-          <button
+  return (
+    <Container maxWidth="sm" sx={{ color: 'text.primary' }}>
+      <Box
+        sx={{
+          mt: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <Typography component="h1" variant="h5">
+          Sign in
+        </Typography>
+        <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
+          <Controller
+            name="email"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                margin="normal"
+                required
+                fullWidth
+                id="email"
+                label="Email Address"
+                autoComplete="email"
+                autoFocus
+                error={!!errors.email}
+                helperText={errors.email?.message}
+              />
+            )}
+          />
+          <Controller
+            name="password"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                margin="normal"
+                required
+                fullWidth
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                autoComplete="current-password"
+                error={!!errors.password}
+                helperText={errors.password?.message}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            )}
+          />
+          <Button
             type="submit"
-            className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            fullWidth
+            variant="contained"
+            sx={{ mt: 3, mb: 2 }}
           >
-            Sign in
-          </button>
-        </div>
-      </form>
-    </div>
+            Sign In
+          </Button>
+        </Box>
+      </Box>
+    </Container>
   );
 }

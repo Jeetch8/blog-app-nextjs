@@ -11,7 +11,7 @@ import {
   Box,
   Chip,
 } from '@mui/material';
-import { getUserProfileByUsername } from '@/db_access/user';
+import { getUserProfilePageInfo } from '@/db_access/user';
 import Link from 'next/link';
 import numeral from 'numeral';
 import {
@@ -25,17 +25,15 @@ import {
   Code,
 } from '@mui/icons-material';
 
-const ProfilePage = async ({ params }: { params: { userId: string } }) => {
+const ProfilePage = async ({ params }: { params: { username: string } }) => {
   const session = await getServerSession(authOptions);
-  if (session?.user?.name?.toLowerCase().split(' ').join('-') !== params.userId)
-    notFound();
 
-  const profile = await getUserProfileByUsername(params.userId);
+  const user = await getUserProfilePageInfo(params.username.split('%40')[1]);
 
-  if (!profile) notFound();
+  if (!user) notFound();
 
   return (
-    <Container>
+    <Container sx={{ color: 'text.primary' }}>
       <Stack spacing={4} sx={{ marginTop: 10 }}>
         {/* First row */}
         <Stack
@@ -56,24 +54,26 @@ const ProfilePage = async ({ params }: { params: { userId: string } }) => {
             )}
             <Stack>
               <Typography variant="h4" fontWeight="bold">
-                {profile.username}
+                {user?.name}
               </Typography>
               <Typography variant="subtitle1" color="text.secondary">
-                @{profile.username?.toLowerCase().split(' ').join('-')}
+                @{user?.username}
               </Typography>
-              {profile.tagline && (
-                <Typography variant="body1">{profile.tagline}</Typography>
+              {user?.profile?.tagline && (
+                <Typography variant="body1">
+                  {user?.profile?.tagline}
+                </Typography>
               )}
               <Stack direction="row" spacing={2} mt={1}>
                 <Typography>
                   <strong>
-                    {numeral(profile.followers_count).format('0a')}
+                    {numeral(user?.profile?.followers_count).format('0a')}
                   </strong>{' '}
                   followers
                 </Typography>
                 <Typography>
                   <strong>
-                    {numeral(profile.following_count).format('0a')}
+                    {numeral(user?.profile?.following_count).format('0a')}
                   </strong>{' '}
                   following
                 </Typography>
@@ -81,18 +81,18 @@ const ProfilePage = async ({ params }: { params: { userId: string } }) => {
             </Stack>
           </Stack>
           <Link href="/settings/profile" passHref>
-            <Button variant="outlined">Edit Profile</Button>
+            <Button variant="outlined">Edit user</Button>
           </Link>
         </Stack>
 
         {/* Second row */}
-        {profile.bio && (
+        {user?.profile?.bio && (
           <Box>
             <Typography
               variant="body1"
               sx={{ display: 'flex', alignItems: 'center' }}
             >
-              <Person sx={{ mr: 1 }} /> {profile.bio}
+              <Person sx={{ mr: 1 }} /> {user?.profile?.bio}
             </Typography>
           </Box>
         )}
@@ -104,49 +104,49 @@ const ProfilePage = async ({ params }: { params: { userId: string } }) => {
           spacing={2}
           flexWrap="wrap"
         >
-          {profile.location && (
+          {user?.profile?.location && (
             <Typography sx={{ display: 'flex', alignItems: 'center' }}>
-              <LocationOn sx={{ mr: 0.5 }} /> {profile.location}
+              <LocationOn sx={{ mr: 0.5 }} /> {user?.profile?.location}
             </Typography>
           )}
-          {profile.website && (
-            <Link href={profile.website} passHref>
+          {user?.profile?.website && (
+            <Link href={user?.profile?.website} passHref>
               <Typography sx={{ display: 'flex', alignItems: 'center' }}>
                 <Language sx={{ mr: 0.5 }} /> Website
               </Typography>
             </Link>
           )}
-          {profile.github_url && (
-            <Link href={profile.github_url} passHref>
+          {user?.profile?.github_url && (
+            <Link href={user?.profile?.github_url} passHref>
               <Typography sx={{ display: 'flex', alignItems: 'center' }}>
                 <GitHub sx={{ mr: 0.5 }} /> GitHub
               </Typography>
             </Link>
           )}
-          {profile.linkedin_url && (
-            <Link href={profile.linkedin_url} passHref>
+          {user?.profile?.linkedin_url && (
+            <Link href={user?.profile?.linkedin_url} passHref>
               <Typography sx={{ display: 'flex', alignItems: 'center' }}>
                 <LinkedIn sx={{ mr: 0.5 }} /> LinkedIn
               </Typography>
             </Link>
           )}
-          {profile.twitter_url && (
-            <Link href={profile.twitter_url} passHref>
+          {user?.profile?.twitter_url && (
+            <Link href={user?.profile?.twitter_url} passHref>
               <Typography sx={{ display: 'flex', alignItems: 'center' }}>
                 <Twitter sx={{ mr: 0.5 }} /> Twitter
               </Typography>
             </Link>
           )}
-          {profile.createdAt && (
+          {user?.profile?.createdAt && (
             <Typography sx={{ display: 'flex', alignItems: 'center' }}>
               <CalendarToday sx={{ mr: 0.5 }} /> Member since{' '}
-              {new Date(profile.createdAt).toLocaleDateString()}
+              {new Date(user?.profile?.createdAt).toLocaleDateString()}
             </Typography>
           )}
         </Stack>
 
         {/* Tech stack */}
-        {profile.tech_stack && (
+        {user?.profile?.tech_stack && (
           <Box>
             <Typography
               variant="h6"
@@ -155,7 +155,7 @@ const ProfilePage = async ({ params }: { params: { userId: string } }) => {
               <Code sx={{ mr: 1 }} /> Tech Stack
             </Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap">
-              {profile.tech_stack.split(',').map((tech, index) => (
+              {user?.profile?.tech_stack.split(',').map((tech, index) => (
                 <Chip key={index} label={tech.trim()} variant="outlined" />
               ))}
             </Stack>

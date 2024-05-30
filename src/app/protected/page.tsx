@@ -1,4 +1,4 @@
-import LogoutButton from '@/components/buttons/LogoutButton';
+import LogoutButton from '@/components/buttons/auth/LogoutButton';
 import { getServerSession } from 'next-auth';
 
 export default async function Protected() {
