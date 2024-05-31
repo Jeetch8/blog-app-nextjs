@@ -11,30 +11,6 @@ interface CreateBlogData {
   banner_img: string;
 }
 
-export async function getAllBlogs(page: number) {
-  const pageSize = 15;
-  const skip = (page - 1) * pageSize;
-
-  const [blogs, count] = await Promise.all([
-    prisma.blog.findMany({
-      skip,
-      take: pageSize,
-      // Add any necessary includes or selects here
-    }),
-    prisma.blog.count(),
-  ]);
-
-  const totalNumberOfPages = Math.ceil(count / pageSize);
-  const nextPage = page + 1 > totalNumberOfPages ? page : page + 1;
-
-  return {
-    blogs,
-    nextCursor: nextPage,
-    prevCursor: page - 1,
-    totalPages: totalNumberOfPages,
-  };
-}
-
 export async function getBlogById(id: string, userId: string) {
   const blog = await prisma.blog.findUnique({
     where: { id },
@@ -109,7 +85,7 @@ export async function createBlog(data: CreateBlogData, userId: string) {
       title: data.title,
       topicId: data.topicId || '',
       banner_img: data.banner_img,
-      blog_status: BlogStatus.draft,
+      blog_status: BlogStatus.DRAFT,
       blog_stats: {
         create: {
           date: new Date().toISOString().split('T')[0],
@@ -187,4 +163,69 @@ async function updateBlogStats(
       },
     },
   });
+}
+
+export async function getBlogWithAuthor(id: string) {
+  const blog = await prisma.blog.findUnique({
+    where: { id },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          image: true,
+          email: true,
+          username: true,
+          profile: {
+            select: {
+              bio: true,
+              tagline: true,
+              followers_count: true,
+              following_count: true,
+            },
+          },
+        },
+      },
+      topic: true,
+      comments: {
+        include: {
+          user: {
+            select: {
+              name: true,
+              image: true,
+              username: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      },
+      likes: {
+        include: {
+          user: {
+            select: {
+              name: true,
+              image: true,
+              username: true,
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          comments: true,
+          likes: true,
+        },
+      },
+    },
+  });
+
+  if (!blog) {
+    throw new Error('Blog not found');
+  }
+
+  // Update view count
+  const date = new Date().toISOString().split('T')[0];
+  await updateBlogStats(blog.id, date, 'number_of_views');
+
+  return blog;
 }

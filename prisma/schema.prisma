@@ -13,7 +13,6 @@ model User_Profile {
   bio             String?
   tagline         String?
   location        String?
-  website         String?
   followers_count Int      @default(0)
   following_count Int      @default(0)
   website_url     String?
@@ -24,7 +23,7 @@ model User_Profile {
   tech_stack      String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @default(now())
-  user            User     @relation(fields: [userId], references: [id])
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("profiles")
 }
@@ -97,10 +96,10 @@ model VerificationRequest {
 
 model bookmark_category {
   id            String                   @id @default(cuid())
-  name          String
-  description   String
+  title         String
+  description   String?
   userId        String
-  user          User                     @relation(fields: [userId], references: [id])
+  user          User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt     DateTime                 @default(now())
   updatedAt     DateTime                 @updatedAt
   category_blog bookmark_category_blog[]
@@ -110,15 +109,93 @@ model bookmark_category {
 
 model bookmark_category_blog {
   id         String            @id @default(cuid())
-  category   bookmark_category @relation(fields: [categoryId], references: [id])
   categoryId String
-  note       String
-  blog       Blog              @relation(fields: [blogId], references: [id])
+  note       String?
   blogId     String
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
+  blog       Blog              @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  category   bookmark_category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@map("bookmark_category_blogs")
+}
+
+model blog_like {
+  id        String   @id @default(cuid())
+  userId    String
+  blogId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, blogId])
+  @@map("blog_likes")
+}
+
+model blog_comment {
+  id        String   @id @default(cuid())
+  content   String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  blogId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("blog_comments")
+}
+
+model blog_topic {
+  id        String   @id @default(cuid())
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  blog      Blog[]
+
+  @@map("blog_topics")
+}
+
+enum BlogStatus {
+  PUBLISHED
+  DRAFT
+}
+
+model Blog {
+  id                 String                   @id @default(cuid())
+  title              String
+  markdown_content   String
+  blog_status        BlogStatus
+  short_description  String
+  number_of_views    Int                      @default(0)
+  number_of_likes    Int                      @default(0)
+  number_of_comments Int                      @default(0)
+  authorId           String
+  topicId            String
+  banner_img         String
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  user               User                     @relation(fields: [authorId], references: [id])
+  topic              blog_topic               @relation(fields: [topicId], references: [id])
+  comments           blog_comment[]
+  likes              blog_like[]
+  reading_history    Reading_history[]
+  category_blog      bookmark_category_blog[]
+  blog_stats         blog_stat[]
+
+  @@map("blogs")
+}
+
+model Reading_history {
+  id        String   @id @default(cuid())
+  userId    String
+  blogId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  blog      Blog     @relation(fields: [blogId], references: [id])
+
+  @@map("reading_histories")
 }
 
 model blog_stat {
@@ -133,83 +210,4 @@ model blog_stat {
   updatedAt          DateTime @updatedAt
 
   @@map("blog_stats")
-}
-
-model blog_like {
-  id        String   @id @default(cuid())
-  userId    String
-  blogId    String
-  user      User     @relation(fields: [userId], references: [id])
-  blog      Blog     @relation(fields: [blogId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, blogId])
-  @@map("blog_likes")
-}
-
-model blog_comment {
-  id        String   @id @default(cuid())
-  content   String
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  blog      Blog     @relation(fields: [blogId], references: [id])
-  blogId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("blog_comments")
-}
-
-enum BlogStatus {
-  publish
-  draft
-}
-
-model Blog {
-  id                 String                   @id @default(cuid())
-  title              String
-  html_content       String
-  markdown_content   String
-  blog_status        BlogStatus
-  short_description  String
-  number_of_views    Int                      @default(0)
-  number_of_likes    Int                      @default(0)
-  number_of_comments Int                      @default(0)
-  user               User                     @relation(fields: [authorId], references: [id])
-  authorId           String
-  topic              blog_topic               @relation(fields: [topicId], references: [id])
-  topicId            String
-  banner_img         String
-  createdAt          DateTime                 @default(now())
-  updatedAt          DateTime                 @updatedAt
-  comments           blog_comment[]
-  likes              blog_like[]
-  reading_history    Reading_history[]
-  category_blog      bookmark_category_blog[]
-  blog_stats         blog_stat[]
-
-  @@map("blogs")
-}
-
-model blog_topic {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  blog      Blog[]
-
-  @@map("blog_topics")
-}
-
-model Reading_history {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  blog      Blog     @relation(fields: [blogId], references: [id])
-  blogId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("reading_histories")
 }

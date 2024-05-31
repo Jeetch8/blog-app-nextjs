@@ -35,10 +35,18 @@ const AddToBookmarSelect = () => {
             position: 'absolute',
             border: '.5px solid black',
             borderRadius: '5px',
-            backgroundColor: 'white',
+            backgroundColor: 'black',
+            color: 'text.primary',
           }}
         >
-          <ListItem sx={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+          <ListItem
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '7px',
+              color: 'text.primary',
+            }}
+          >
             <input type="checkbox" /> hello
           </ListItem>
           <Divider />

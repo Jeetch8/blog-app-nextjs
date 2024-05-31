@@ -1,31 +1,14 @@
-export interface BlogCardProps {
-  title: string;
-  description: string;
-  image: string;
-  author: string;
-  date: string;
-  createdAt: string;
-  number_of_likes: number;
-  number_of_comments: number;
-  short_description: string;
-  banner_img: string;
-  id: string;
-  user: {
-    profile_img: string;
-    name: string;
-  };
-}
-
 import Typography from '@mui/material/Typography';
 import { Avatar, AvatarGroup, Box, Button, Stack } from '@mui/material';
 import dayjs from 'dayjs';
 import AddToBookmarSelect from './AddToBookmarSelect';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { Blog, User } from '@prisma/client';
+import { IHomeBlog } from '@/app/page';
 
-export default function BlogCard({ blog }: { blog: BlogCardProps }) {
+export default function BlogCard({ blog }: { blog: IHomeBlog }) {
   const navigate = useRouter();
-  console.log(blog, 'blog');
   const navigateToBlog = () => {
     let title = blog.title;
     let temp = encodeURIComponent(title.replace(/\s+/g, '-'));
@@ -34,9 +17,19 @@ export default function BlogCard({ blog }: { blog: BlogCardProps }) {
   const createdAt = dayjs(blog.createdAt).fromNow();
 
   return (
-    <Stack sx={{ color: 'text.primary', maxWidth: '600px' }}>
+    <Stack
+      sx={{
+        color: 'text.primary',
+        maxWidth: '640px',
+        border: '1px solid gray',
+        borderRadius: 3,
+        paddingX: 3,
+        paddingY: 3,
+        marginY: 2,
+      }}
+    >
       <Stack direction="row" spacing={2}>
-        <Avatar src={blog.user.profile_img} aria-label="profile" />
+        <Avatar src={blog?.user?.image || ''} aria-label="profile" />
         <Stack direction="column">
           <Typography fontSize={14} fontWeight={600}>
             {blog.user.name}
@@ -55,22 +48,24 @@ export default function BlogCard({ blog }: { blog: BlogCardProps }) {
             {blog.short_description}
           </Typography>
         </Box>
-        <Box>
-          {/* <Image
-            src={blog.banner_img}
-            alt="banner"
-            width={300}
-            height={200}
-            style={{ objectFit: 'cover' }}
-          /> */}
-          <img
-            height={100}
-            width={160}
-            style={{ borderRadius: 10 }}
-            src={blog.banner_img}
-            alt="banner"
-          />
-        </Box>
+        {blog.banner_img && (
+          <Box>
+            {/* <Image
+        src={blog.banner_img}
+        alt="banner"
+        width={300}
+        height={200}
+        style={{ objectFit: 'cover' }}
+      /> */}
+            <img
+              height={100}
+              width={160}
+              style={{ borderRadius: 10 }}
+              src={blog.banner_img}
+              alt="banner"
+            />
+          </Box>
+        )}
       </Stack>
       <Box>
         <AvatarGroup
@@ -81,22 +76,22 @@ export default function BlogCard({ blog }: { blog: BlogCardProps }) {
         >
           <Avatar
             sx={{ height: 25, width: 25 }}
-            src={blog.user.profile_img}
+            src={blog?.user?.image || ''}
             aria-label="profile"
           />
           <Avatar
             sx={{ height: 25, width: 25 }}
-            src={blog.user.profile_img}
+            src={blog?.user?.image || ''}
             aria-label="profile"
           />
           <Avatar
             sx={{ height: 25, width: 25 }}
-            src={blog.user.profile_img}
+            src={blog?.user?.image || ''}
             aria-label="profile"
           />
           <Avatar
             sx={{ height: 25, width: 25 }}
-            src={blog.user.profile_img}
+            src={blog?.user?.image || ''}
             aria-label="profile"
           />
         </AvatarGroup>

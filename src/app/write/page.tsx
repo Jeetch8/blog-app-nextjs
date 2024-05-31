@@ -28,6 +28,7 @@ import { useState, useRef } from 'react';
 import useFetch from '@/hooks/useFetch';
 import Image from 'next/image';
 import CameraEnhanceIcon from '@mui/icons-material/CameraEnhance';
+import './style.css';
 
 interface YoutubeDirectiveNode extends LeafDirective {
   name: 'youtube';
@@ -192,6 +193,10 @@ export default function Editor() {
       </Box>
       <MDXEditor
         markdown=""
+        className="mdx-editor"
+        autoFocus
+        contentEditableClassName="mdx-editor-content-editable"
+        trim={true}
         placeholder="Write your article here..."
         plugins={[
           toolbarPlugin({ toolbarContents: () => <KitchenSinkToolbar /> }),
