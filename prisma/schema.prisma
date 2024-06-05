@@ -164,13 +164,16 @@ enum BlogStatus {
 model Blog {
   id                 String                   @id @default(cuid())
   title              String
-  markdown_content   String
+  markdown_file_url  String
+  markdown_file_name String
   blog_status        BlogStatus
   short_description  String
   number_of_views    Int                      @default(0)
   number_of_likes    Int                      @default(0)
   number_of_comments Int                      @default(0)
   authorId           String
+  embeddings         Int[]
+  reading_time       Int                      @default(0)
   topicId            String
   banner_img         String
   createdAt          DateTime                 @default(now())

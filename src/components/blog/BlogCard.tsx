@@ -1,11 +1,12 @@
 import Typography from '@mui/material/Typography';
 import { Avatar, AvatarGroup, Box, Button, Stack } from '@mui/material';
 import dayjs from 'dayjs';
-import AddToBookmarSelect from './AddToBookmarSelect';
+import AddToBookmarSelect from '@/components/blog/AddToBookmarSelect';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Blog, User } from '@prisma/client';
 import { IHomeBlog } from '@/app/page';
+import Link from 'next/link';
 
 export default function BlogCard({ blog }: { blog: IHomeBlog }) {
   const navigate = useRouter();
@@ -41,7 +42,13 @@ export default function BlogCard({ blog }: { blog: IHomeBlog }) {
       </Stack>
       <Stack direction="row" spacing={2} justifyContent="space-between">
         <Box>
-          <Typography fontSize={18} fontWeight={600}>
+          <Typography
+            component={Link}
+            href={`/blog/${blog.id}`}
+            fontSize={20}
+            fontWeight={600}
+            sx={{ textDecoration: 'none', color: 'text.primary' }}
+          >
             {blog.title}
           </Typography>
           <Typography fontSize={14} color="text.secondary">
@@ -110,7 +117,7 @@ export default function BlogCard({ blog }: { blog: IHomeBlog }) {
               {blog.number_of_comments} comments
             </Typography>
           </Stack>
-          <AddToBookmarSelect />
+          <AddToBookmarSelect blogId={blog.id} />
         </Stack>
       </Box>
     </Stack>

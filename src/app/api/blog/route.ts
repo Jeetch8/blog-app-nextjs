@@ -5,10 +5,12 @@ import prisma from '@prisma_client/prisma';
 import { z } from 'zod';
 import { createBlog } from '@/db_access/blog';
 import { BlogStatus } from '@prisma/client';
+import { uploadToS3 } from '@/utils/s3';
+import sanitizeHtml from 'sanitize-html';
+import { nanoid } from 'nanoid';
 
-// Mock function for creating embeddings
+// Mock function for creating embeddings (replace with actual implementation)
 async function createEmbeddings(text: string) {
-  // This is a mock function - replace with actual embedding creation
   return Array(1536)
     .fill(0)
     .map(() => Math.random());
@@ -39,14 +41,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Create blog with embeddings
-    const blog = await createBlog(validatedData, user.id);
+    // Sanitize markdown content
+    const sanitizedMarkdown = sanitizeHtml(validatedData.markdown_content, {
+      allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img']),
+      allowedAttributes: {
+        ...sanitizeHtml.defaults.allowedAttributes,
+        img: ['src', 'alt'],
+      },
+    });
 
-    // Create embeddings for the blog content (mock for now)
-    const embeddings = await createEmbeddings(blog.markdown_content);
+    // Generate unique filename
+    const fileName = `blogs/${user.id}/${nanoid()}.md`;
 
-    // Here you would typically store the embeddings in your vector database
-    console.log('Embeddings created:', embeddings.length);
+    // Upload to S3
+    const { fileUrl } = await uploadToS3(
+      process.env.AWS_BLOG_BUCKET_NAME!,
+      fileName,
+      sanitizedMarkdown
+    );
+
+    // Create embeddings for the blog content
+    const embeddings = await createEmbeddings(sanitizedMarkdown);
+
+    // Create blog with file URL and embeddings
+    const blog = await createBlog(
+      {
+        ...validatedData,
+        markdown_content: sanitizedMarkdown,
+        markdown_file_url: fileUrl,
+        markdown_file_name: fileName,
+        embeddings,
+      },
+      user.id
+    );
 
     return NextResponse.json(
       {

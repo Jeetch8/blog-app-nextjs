@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import {
   Account,
   Blog,
@@ -13,10 +14,85 @@ import {
   User_Profile,
 } from '@prisma/client';
 import { BlogStatus } from '@prisma/client';
-import dayjs, { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
 import { faker } from '@faker-js/faker';
+import { s3Client, uploadToS3 } from '../src/utils/s3';
+import fs from 'fs/promises';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import { ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 const prisma = new PrismaClient();
+
+interface MarkdownFile {
+  originalName: string;
+  fileName: string;
+  fileUrl: string;
+  content: string;
+}
+
+async function uploadMarkdownFiles(
+  folderPath: string
+): Promise<MarkdownFile[]> {
+  const files: MarkdownFile[] = [];
+
+  try {
+    const fileNames = await fs.readdir(folderPath);
+    for (const originalName of fileNames) {
+      if (originalName.endsWith('.md')) {
+        const filePath = path.join(folderPath, originalName);
+        const content = await fs.readFile(filePath, 'utf-8');
+        const fileName = `blogs/seed/${uuidv4()}.md`;
+        const { fileUrl } = await uploadToS3(
+          process.env.AWS_BUCKET_NAME!,
+          fileName,
+          content
+        );
+        files.push({
+          originalName,
+          fileName,
+          fileUrl,
+          content,
+        });
+      }
+    }
+    return files;
+  } catch (error) {
+    console.error('Error uploading markdown files:', error);
+    throw error;
+  }
+}
+
+function createBlogs(
+  authorId: string,
+  topicId: string,
+  markdownFile: MarkdownFile
+): Omit<Blog, 'id'> {
+  return {
+    title: faker.lorem.sentence(),
+    markdown_file_name: markdownFile.fileName,
+    markdown_file_url: markdownFile.fileUrl,
+    reading_time: faker.number.int({ min: 1, max: 10 }),
+    embeddings: createEmbeddings(markdownFile.content),
+    banner_img: faker.image.urlPicsumPhotos({ width: 1080, height: 920 }),
+    authorId,
+    topicId,
+    number_of_views: faker.number.int({ min: 0, max: 1000 }),
+    number_of_likes: faker.number.int({ min: 0, max: 1000 }),
+    number_of_comments: faker.number.int({ min: 0, max: 1000 }),
+    blog_status: BlogStatus.PUBLISHED,
+    short_description: faker.lorem.paragraph(),
+    createdAt: faker.date.past(),
+    updatedAt: faker.date.past(),
+  };
+}
+
+function createEmbeddings(text: string) {
+  // This is a mock function - replace with actual embedding creation
+  return Array(1536)
+    .fill(0)
+    .map(() => Math.random());
+}
 
 function createFakeUser(): Omit<User, 'id'> {
   return {
@@ -118,24 +194,6 @@ function createTopic(): Omit<blog_topic, 'id'> {
   };
 }
 
-function createBlogs(authorId: string, topicId: string): Omit<Blog, 'id'> {
-  return {
-    title: faker.lorem.sentence(),
-    html_content: faker.lorem.paragraphs(),
-    markdown_content: faker.lorem.paragraphs(),
-    banner_img: faker.image.urlPicsumPhotos({ width: 1080, height: 920 }),
-    authorId,
-    topicId,
-    number_of_views: faker.number.int({ min: 0, max: 1000 }),
-    number_of_likes: faker.number.int({ min: 0, max: 1000 }),
-    number_of_comments: faker.number.int({ min: 0, max: 1000 }),
-    blog_status: BlogStatus.PUBLISHED,
-    short_description: faker.lorem.paragraph(),
-    createdAt: faker.date.past(),
-    updatedAt: faker.date.past(),
-  };
-}
-
 function generateBlogStats(
   blogId: string,
   date: string
@@ -186,8 +244,12 @@ const pushTopic = async () => {
   return await prisma.blog_topic.create({ data: topic });
 };
 
-const pushBlogs = async (authorId: string, topicId: string) => {
-  const blog = createBlogs(authorId, topicId);
+const pushBlogs = async (
+  authorId: string,
+  topicId: string,
+  markdownFile: MarkdownFile
+) => {
+  const blog = createBlogs(authorId, topicId, markdownFile);
   return await prisma.blog.create({ data: blog });
 };
 
@@ -201,34 +263,64 @@ const pushBlogLike = async (userId: string, blogId: string) => {
   return await prisma.blog_like.create({ data: blogLike });
 };
 
+const getAllFilesFromS3 = async (
+  bucketName: string
+): Promise<MarkdownFile[]> => {
+  try {
+    const command = new ListObjectsV2Command({
+      Bucket: bucketName,
+    });
+
+    const response = await s3Client.send(command);
+
+    if (!response.Contents) {
+      return [];
+    }
+
+    return response.Contents.map((item) => ({
+      originalName: item.Key!.split('/').pop()!,
+      fileName: item.Key!.split('/').pop()!,
+      fileUrl: `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${item.Key}`,
+      content: '',
+    }));
+  } catch (error) {
+    console.error('Error listing files from S3:', error);
+    throw new Error('Failed to list files from S3');
+  }
+};
+
 async function seedFakeData() {
   try {
-    // await prisma.blog_like.deleteMany();
-    // await prisma.blog_comment.deleteMany();
-    // await prisma.blog.deleteMany();
-    // await prisma.blog_topic.deleteMany();
-    // await prisma.user.deleteMany();
-    // await prisma.bookmark_category.deleteMany();
-    // await prisma.bookmark_category_blog.deleteMany();
+    const markdownFiles = await getAllFilesFromS3(process.env.AWS_BUCKET_NAME!);
     const userIds: string[] = [];
     const topicIds: string[] = [];
     const blogIds: string[] = [];
+
     for (let i = 0; i < 30; i++) {
       const user = await pushUser();
       userIds.push(user.id);
     }
+
     for (let i = 0; i < 20; i++) {
       const topic = await pushTopic();
       topicIds.push(topic.id);
     }
 
+    // Create blogs using the uploaded markdown files
     for (let i = 0; i < userIds.length; i++) {
-      const blog = await pushBlogs(
-        userIds[i],
-        faker.helpers.arrayElement(topicIds)
-      );
-      blogIds.push(blog.id);
+      for (let j = 0; j < faker.number.int({ min: 1, max: 10 }); j++) {
+        const blog = await prisma.blog.create({
+          data: createBlogs(
+            userIds[i],
+            faker.helpers.arrayElement(topicIds),
+            faker.helpers.arrayElement(markdownFiles)
+          ),
+        });
+        blogIds.push(blog.id);
+      }
     }
+
+    // Create comments and likes
     for (let i = 0; i < blogIds.length; i++) {
       for (
         let j = 0;
@@ -238,6 +330,7 @@ async function seedFakeData() {
         await pushBlogComment(userIds[j], blogIds[i]);
       }
     }
+
     for (let i = 0; i < blogIds.length; i++) {
       for (
         let j = 0;
@@ -247,6 +340,8 @@ async function seedFakeData() {
         await pushBlogLike(userIds[j], blogIds[i]);
       }
     }
+
+    // Create blog stats
     const blogStatsArr: any = [];
     blogIds.forEach((blogId) => {
       let temp = dayjs().subtract(365, 'day');
@@ -257,16 +352,24 @@ async function seedFakeData() {
         blogStatsArr.push(generateBlogStats(blogId, date));
       }
     });
+
     await prisma.blog_stat.createMany({ data: blogStatsArr });
     console.log('DB seeded with fake data');
     await prisma.$disconnect();
-    process.exit(1);
   } catch (error) {
-    console.log(error);
+    console.error('Seeding error:', error);
     await prisma.$disconnect();
     process.exit(1);
   }
 }
 
-console.log('Seeding fake data');
+// (async () => {
+//   console.log('pushing files to s3');
+//   console.log(process.cwd());
+//   await uploadMarkdownFiles(path.join(process.cwd(), 'seeding-data'));
+//   console.log('pushing files to s3 done');
+//   const markdownFiles = await getAllFilesFromS3(process.env.AWS_BUCKET_NAME!);
+//   console.log(`Found ${markdownFiles.length} markdown files in S3`);
+// })();
+console.log('Starting seed process...');
 seedFakeData();

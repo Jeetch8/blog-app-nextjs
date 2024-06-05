@@ -26,9 +26,7 @@ import {
 } from '@mui/icons-material';
 
 const ProfilePage = async ({ params }: { params: { username: string } }) => {
-  const session = await getServerSession(authOptions);
-
-  const user = await getUserProfilePageInfo(params.username.split('%40')[1]);
+  const user = await getUserProfilePageInfo(params.username);
 
   if (!user) notFound();
 
@@ -42,14 +40,11 @@ const ProfilePage = async ({ params }: { params: { username: string } }) => {
           alignItems="center"
         >
           <Stack direction="row" spacing={4} alignItems="center">
-            {session?.user?.image ? (
-              <Avatar
-                src={session.user.image}
-                sx={{ width: 150, height: 150 }}
-              />
+            {user?.image ? (
+              <Avatar src={user.image} sx={{ width: 150, height: 150 }} />
             ) : (
               <Avatar sx={{ width: 150, height: 150 }}>
-                {session?.user?.name?.[0]}
+                {user?.name?.[0]}
               </Avatar>
             )}
             <Stack>
@@ -109,8 +104,8 @@ const ProfilePage = async ({ params }: { params: { username: string } }) => {
               <LocationOn sx={{ mr: 0.5 }} /> {user?.profile?.location}
             </Typography>
           )}
-          {user?.profile?.website && (
-            <Link href={user?.profile?.website} passHref>
+          {user?.profile?.website_url && (
+            <Link href={user?.profile?.website_url} passHref>
               <Typography sx={{ display: 'flex', alignItems: 'center' }}>
                 <Language sx={{ mr: 0.5 }} /> Website
               </Typography>

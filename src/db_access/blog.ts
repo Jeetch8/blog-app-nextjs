@@ -1,14 +1,71 @@
 import prisma from '@prisma_client/prisma';
-import markdown from 'markdown-it';
-import { convert } from 'html-to-text';
-import sanitize from 'markdown-it-sanitizer';
 import { BlogStatus } from '@prisma/client';
+import readingTime from 'reading-time';
+import { marked } from 'marked';
 
 interface CreateBlogData {
   title: string;
   markdown_content: string;
+  markdown_file_url: string;
+  markdown_file_name: string;
   topicId?: string;
   banner_img: string;
+  embeddings: number[];
+}
+
+export async function extractTextFromMarkdown(
+  markdown: string,
+  wordLimit: number = 200
+): Promise<string> {
+  // Remove HTML tags that might be in the markdown
+  const textWithoutHTML = markdown.replace(/<[^>]*>/g, '');
+
+  // Convert markdown to plain text
+  const plainText = await new Promise<string>((resolve) => {
+    marked.parse(
+      textWithoutHTML,
+      {
+        gfm: true, // GitHub Flavored Markdown
+        renderer: {
+          // Override default renderers to get plain text
+          paragraph: (text: string) => text + '\n',
+          heading: (text: string) => text + '\n',
+          list: (text: string) => text + '\n',
+          listitem: (text: string) => '- ' + text + '\n',
+          link: (_: any, __: any, text: string) => text,
+          image: (_: any, __: any, text: string) => text || '',
+          codespan: (text: string) => text,
+          code: (text: string) => text,
+          html: () => '',
+        },
+      },
+      (err: Error | null, result?: string) => {
+        resolve(err ? '' : result || '');
+      }
+    );
+  });
+  // Clean up the text
+  const cleanText = plainText
+    .replace(/\n+/g, ' ') // Replace multiple newlines with space
+    .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+    .trim();
+
+  // Get specified number of words
+  const words = cleanText.split(' ');
+  const limitedWords = words.slice(0, wordLimit);
+
+  // Add ellipsis if text was truncated
+  const excerpt =
+    limitedWords.join(' ') + (words.length > wordLimit ? '...' : '');
+
+  return excerpt;
+}
+
+export async function getBlogWithBlogId(blogId: string) {
+  return await prisma.blog.findFirst({
+    where: { id: blogId },
+    include: { user: { select: { image: true, name: true, username: true } } },
+  });
 }
 
 export async function getBlogById(id: string, userId: string) {
@@ -35,50 +92,9 @@ export async function getBlogById(id: string, userId: string) {
 }
 
 export async function createBlog(data: CreateBlogData, userId: string) {
-  const sanitized_markdown = sanitize(data.markdown_content);
-  const html = markdown()
-    .use(sanitize, {
-      allowedTags: [
-        'p',
-        'h1',
-        'h2',
-        'h3',
-        'h4',
-        'h5',
-        'h6',
-        'blockquote',
-        'a',
-        'ul',
-        'ol',
-        'li',
-        'b',
-        'i',
-        'strong',
-        'em',
-        'strike',
-        'code',
-        'hr',
-        'br',
-        'div',
-        'span',
-        'pre',
-        'img',
-      ],
-      allowedAttributes: {
-        a: ['href'],
-        img: ['src'],
-      },
-    })
-    .render(data.markdown_content);
-  const text = convert(html, {
-    wordwrap: false,
-    preserveNewlines: false,
-  });
-  const short_description = text
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/\\n|\\r|\\t/g, '')
-    .slice(0, 250);
+  const short_description = await extractTextFromMarkdown(
+    data.markdown_content
+  );
 
   return await prisma.blog.create({
     data: {
@@ -86,16 +102,18 @@ export async function createBlog(data: CreateBlogData, userId: string) {
       topicId: data.topicId || '',
       banner_img: data.banner_img,
       blog_status: BlogStatus.DRAFT,
+      markdown_file_url: data.markdown_file_url,
+      markdown_file_name: data.markdown_file_name,
+      embeddings: data.embeddings,
+      reading_time: readingTime(data.markdown_content).minutes,
+      short_description,
+      authorId: userId,
       blog_stats: {
         create: {
           date: new Date().toISOString().split('T')[0],
           number_of_views: 0,
         },
       },
-      markdown_content: sanitized_markdown,
-      html_content: html,
-      short_description,
-      authorId: userId,
     },
   });
 }

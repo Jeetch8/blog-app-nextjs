@@ -13,7 +13,6 @@ import { Button, CardActions, Menu, MenuItem, Stack } from '@mui/material';
 import { useState } from 'react';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { CustomAxiosAuth } from '../utils/CustomAxios';
 import BookmarkCategoryModal from './Modals/BookmarkCategoryModal';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';

@@ -10,7 +10,7 @@ import { Blog, User } from '@prisma/client';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import dayjs from 'dayjs';
 import { Box, Container } from '@mui/material';
-import BlogCard from '@/components/BlogCard';
+import BlogCard from '@/components/blog/BlogCard';
 
 dayjs.extend(relativeTime);
 

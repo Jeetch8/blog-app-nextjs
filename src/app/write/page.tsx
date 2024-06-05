@@ -35,46 +35,45 @@ interface YoutubeDirectiveNode extends LeafDirective {
   attributes: { id: string };
 }
 
-export const YoutubeDirectiveDescriptor: DirectiveDescriptor<YoutubeDirectiveNode> =
-  {
-    name: 'youtube',
-    type: 'leafDirective',
-    testNode(node) {
-      return node.name === 'youtube';
-    },
-    attributes: ['id'],
-    hasChildren: false,
-    Editor: ({ mdastNode, lexicalNode, parentEditor }) => {
-      return (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
+const YoutubeDirectiveDescriptor: DirectiveDescriptor<YoutubeDirectiveNode> = {
+  name: 'youtube',
+  type: 'leafDirective',
+  testNode(node) {
+    return node.name === 'youtube';
+  },
+  attributes: ['id'],
+  hasChildren: false,
+  Editor: ({ mdastNode, lexicalNode, parentEditor }) => {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+        }}
+      >
+        <button
+          onClick={() => {
+            parentEditor.update(() => {
+              lexicalNode.selectNext();
+              lexicalNode.remove();
+            });
           }}
         >
-          <button
-            onClick={() => {
-              parentEditor.update(() => {
-                lexicalNode.selectNext();
-                lexicalNode.remove();
-              });
-            }}
-          >
-            delete
-          </button>
-          <iframe
-            width="560"
-            height="315"
-            src={`https://www.youtube.com/embed/${mdastNode.attributes.id}`}
-            title="YouTube video player"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          ></iframe>
-        </div>
-      );
-    },
-  };
+          delete
+        </button>
+        <iframe
+          width="560"
+          height="315"
+          src={`https://www.youtube.com/embed/${mdastNode.attributes.id}`}
+          title="YouTube video player"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        ></iframe>
+      </div>
+    );
+  },
+};
 
 async function expressImageUploadHandler(image: File) {
   const formData = new FormData();
@@ -127,7 +126,9 @@ export default function Editor() {
         spacing={2}
         sx={{ marginBottom: '1rem' }}
       >
-        <Button variant="contained">Save</Button>
+        <Button variant="contained" onClick={() => console.log()}>
+          Save
+        </Button>
         <Button variant="contained">Publish</Button>
       </Stack>
 

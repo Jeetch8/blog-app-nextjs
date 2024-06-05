@@ -1,0 +1,91 @@
+.prose {
+  color: inherit;
+  max-width: none;
+}
+
+.mdx-pre {
+  margin: 1em 0;
+  padding: 1em;
+  overflow-x: auto;
+  background-color: #1e1e1e;
+  border-radius: 0.5em;
+}
+
+.mdx-code {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+/* Syntax highlighting colors */
+.hljs-keyword {
+  color: #569cd6;
+}
+.hljs-string {
+  color: #ce9178;
+}
+.hljs-comment {
+  color: #6a9955;
+}
+.hljs-function {
+  color: #dcdcaa;
+}
+.hljs-number {
+  color: #b5cea8;
+}
+.hljs-operator {
+  color: #d4d4d4;
+}
+.hljs-class {
+  color: #4ec9b0;
+}
+.hljs-property {
+  color: #9cdcfe;
+}
+
+.copy-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.copy-button:active {
+  transform: scale(0.95);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.copy-button svg {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.toc {
+  background-color: #1d4272;
+  border-radius: 0.5em;
+  padding: 1em;
+  border: 1px solid #333;
+  margin-top: 100px;
+  margin-bottom: 100px;
+}
+.toc-level {
+  width: 100%;
+}
+.toc-item {
+  color: #fff;
+  line-height: 2;
+  width: 100%;
+}
+.toc-link {
+  padding: 4px;
+  width: 100%;
+}
+.toc-link:hover {
+  border-radius: 10px;
+  background-color: #305e9b;
+}
