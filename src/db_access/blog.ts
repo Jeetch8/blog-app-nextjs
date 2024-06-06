@@ -71,7 +71,6 @@ export async function getBlogWithBlogId(blogId: string) {
 export async function getBlogById(id: string, userId: string) {
   const blog = await prisma.blog.findUnique({
     where: { id },
-    // Add any necessary includes here
   });
 
   if (!blog) {
@@ -246,4 +245,27 @@ export async function getBlogWithAuthor(id: string) {
   await updateBlogStats(blog.id, date, 'number_of_views');
 
   return blog;
+}
+
+export async function getUserBookmarkCategories(userId: string) {
+  return await prisma.bookmark_category.findMany({
+    where: {
+      userId,
+    },
+    include: {
+      category_blog: {
+        include: {
+          blog: {
+            select: {
+              banner_img: true,
+            },
+          },
+        },
+        take: 4,
+      },
+    },
+    orderBy: {
+      updatedAt: 'desc',
+    },
+  });
 }

@@ -21,6 +21,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { hash } from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -94,11 +95,11 @@ function createEmbeddings(text: string) {
     .map(() => Math.random());
 }
 
-function createFakeUser(): Omit<User, 'id'> {
+function createFakeUser(hashedPassword: string): Omit<User, 'id'> {
   return {
     name: faker.person.fullName(),
     email: faker.internet.email(),
-    password: '$2b$10$Tpc1CSiuQvA6f9hqAFgbDOLUgwXwwmnBbU7Z0.k4YgBGWgEPtl5Ea',
+    password: hashedPassword,
     image: faker.image.avatar(),
     username: faker.internet.username(),
     emailVerified: null,
@@ -222,7 +223,8 @@ function createReadingHistory(
 }
 
 const pushUser = async () => {
-  const user = createFakeUser();
+  const hashedPassword = await hash('PAssword!@12', 10);
+  const user = createFakeUser(hashedPassword);
   const profile = createFakeProfile();
   const account1 = createFakeAccount();
   const account2 = createFakeAccount();
@@ -338,6 +340,25 @@ async function seedFakeData() {
         j++
       ) {
         await pushBlogLike(userIds[j], blogIds[i]);
+      }
+    }
+
+    for (const userId of userIds) {
+      const numCategories = faker.number.int({ min: 3, max: 10 });
+      for (let i = 0; i < numCategories; i++) {
+        const category = await prisma.bookmark_category.create({
+          data: createBookmarkCategory(userId),
+        });
+        const numBookmarks = faker.number.int({ min: 5, max: 20 });
+        const randomBlogIds = faker.helpers.arrayElements(
+          blogIds,
+          numBookmarks
+        );
+        for (const blogId of randomBlogIds) {
+          await prisma.bookmark_category_blog.create({
+            data: createBookmarkCategoryBlog(category.id, blogId),
+          });
+        }
       }
     }
 

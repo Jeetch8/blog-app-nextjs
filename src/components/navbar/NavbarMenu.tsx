@@ -25,8 +25,8 @@ const settings = [
   { title: 'Profile', path: '/profile', icon: <Person fontSize="small" /> },
   { title: 'Write', path: '/write', icon: <Edit fontSize="small" /> },
   {
-    title: 'Bookmarks',
-    path: '/bookmarks',
+    title: 'Lists',
+    path: '/lists',
     icon: <Bookmark fontSize="small" />,
   },
   { title: 'Stats', path: '/stats', icon: <BarChart fontSize="small" /> },
@@ -38,6 +38,8 @@ interface NavbarMenuProps {
 }
 
 const NavbarMenu = ({ user }: NavbarMenuProps) => {
+  if (!user) return null;
+
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(
     null
   );
@@ -61,7 +63,7 @@ const NavbarMenu = ({ user }: NavbarMenuProps) => {
       <Button
         startIcon={<Avatar alt="User Avatar" src={user.image || undefined} />}
         onClick={handleOpenUserMenu}
-        sx={{ px: 2, py: 1, color: 'text.primary', borderRadius: 4 }}
+        sx={{ px: 1, color: 'text.primary', borderRadius: 4 }}
       >
         <Typography>{user.name.toUpperCase()}</Typography>
       </Button>

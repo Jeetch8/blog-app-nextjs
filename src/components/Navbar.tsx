@@ -17,6 +17,7 @@ async function Navbar() {
         mb: 2,
         position: 'sticky',
         top: 0,
+        py: '5px',
         zIndex: 1000,
       }}
     >

@@ -3,7 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import GithubProvider from 'next-auth/providers/github';
 import prisma from '@prisma_client/prisma';
-import { compare } from 'bcrypt';
+import { compare, hash } from 'bcrypt';
 import { generateFromEmail } from 'unique-username-generator';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 
@@ -154,6 +154,7 @@ export const authOptions: NextAuthOptions = {
         session.user.name = token.name as string;
         session.user.image = token.picture as string;
         session.user.email = token.email as string;
+        session.user.id = token.sub as string;
         (session.user as any).username = token.username;
       }
       return session;

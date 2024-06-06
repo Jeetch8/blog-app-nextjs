@@ -2,19 +2,17 @@ import Typography from '@mui/material/Typography';
 import { Avatar, AvatarGroup, Box, Button, Stack } from '@mui/material';
 import dayjs from 'dayjs';
 import AddToBookmarSelect from '@/components/blog/AddToBookmarSelect';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Blog, User } from '@prisma/client';
-import { IHomeBlog } from '@/app/page';
+import { IHomeBlog } from '@/app/(protected)/page';
 import Link from 'next/link';
 
-export default function BlogCard({ blog }: { blog: IHomeBlog }) {
-  const navigate = useRouter();
-  const navigateToBlog = () => {
-    let title = blog.title;
-    let temp = encodeURIComponent(title.replace(/\s+/g, '-'));
-    navigate.push(`/blog/${temp}-${blog.id}`);
-  };
+export default function BlogCard({
+  blog,
+  isBookmarked,
+}: {
+  blog: IHomeBlog;
+  isBookmarked: boolean;
+}) {
   const createdAt = dayjs(blog.createdAt).fromNow();
 
   return (
@@ -117,7 +115,7 @@ export default function BlogCard({ blog }: { blog: IHomeBlog }) {
               {blog.number_of_comments} comments
             </Typography>
           </Stack>
-          <AddToBookmarSelect blogId={blog.id} />
+          <AddToBookmarSelect isBookmarked={isBookmarked} blogId={blog.id} />
         </Stack>
       </Box>
     </Stack>

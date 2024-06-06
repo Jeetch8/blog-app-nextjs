@@ -2,13 +2,13 @@ import PrismaClient from '@prisma_client/prisma';
 import { User } from '@prisma/client';
 
 export async function createBookmarkCategory(
-  name: string,
+  title: string,
   description: string,
   userId: string
 ) {
-  return await PrismaClient.bookmark_Category.create({
+  return await PrismaClient.bookmark_category.create({
     data: {
-      name,
+      title,
       description,
       userId,
     },
@@ -16,7 +16,7 @@ export async function createBookmarkCategory(
 }
 
 export async function deleteBookmarkCategory(categoryId: string) {
-  return await PrismaClient.bookmark_Category.delete({
+  return await PrismaClient.bookmark_category.delete({
     where: {
       id: categoryId,
     },
@@ -26,8 +26,36 @@ export async function deleteBookmarkCategory(categoryId: string) {
   });
 }
 
+export async function getCategoryWithBlogs(categoryId: string, userId: string) {
+  const category = await PrismaClient.bookmark_category.findUnique({
+    where: {
+      id: categoryId,
+      userId: userId, // Ensure user owns this category
+    },
+    include: {
+      category_blog: {
+        include: {
+          blog: {
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  image: true,
+                  username: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return category;
+}
+
 export async function getAllUserCategories(userId: string) {
-  return await PrismaClient.bookmark_Category.findMany({
+  return await PrismaClient.bookmark_category.findMany({
     where: {
       userId,
     },
@@ -48,7 +76,7 @@ export async function getAllUserCategories(userId: string) {
 }
 
 export async function getSingleCategoryById(categoryId: string) {
-  return await PrismaClient.bookmark_Category_Blog.findMany({
+  return await PrismaClient.bookmark_category_blog.findMany({
     where: {
       categoryId,
     },
@@ -57,15 +85,15 @@ export async function getSingleCategoryById(categoryId: string) {
 
 export async function updateCategoryInfo(
   categoryId: string,
-  name: string,
+  title: string,
   description: string
 ) {
-  return await PrismaClient.bookmark_Category.update({
+  return await PrismaClient.bookmark_category.update({
     where: {
       id: categoryId,
     },
     data: {
-      name,
+      title,
       description,
     },
   });
@@ -76,7 +104,7 @@ export async function addBlogToCategory(
   blogId: string,
   note: string = ''
 ) {
-  return await PrismaClient.bookmark_Category_Blog.create({
+  return await PrismaClient.bookmark_category_blog.create({
     data: {
       categoryId,
       blogId,
@@ -86,7 +114,7 @@ export async function addBlogToCategory(
 }
 
 export async function removeBlogFromCategory(blogId: string) {
-  return await PrismaClient.bookmark_Category_Blog.delete({
+  return await PrismaClient.bookmark_category_blog.delete({
     where: {
       id: blogId,
     },
@@ -94,7 +122,7 @@ export async function removeBlogFromCategory(blogId: string) {
 }
 
 export async function updateBlogNote(blogId: string, note: string) {
-  return await PrismaClient.bookmark_Category_Blog.update({
+  return await PrismaClient.bookmark_category_blog.update({
     where: {
       id: blogId,
     },
@@ -105,13 +133,13 @@ export async function updateBlogNote(blogId: string, note: string) {
 }
 
 export async function getListOfBookmarkCategories(userId: string) {
-  return await PrismaClient.bookmark_Category.findMany({
+  return await PrismaClient.bookmark_category.findMany({
     where: {
       userId,
     },
     select: {
       id: true,
-      name: true,
+      title: true,
     },
   });
 }

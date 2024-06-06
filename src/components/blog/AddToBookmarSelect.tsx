@@ -35,6 +35,7 @@ interface Category {
 
 interface Props {
   blogId: string;
+  isBookmarked: boolean;
 }
 
 const modalStyle = {
@@ -49,7 +50,7 @@ const modalStyle = {
   p: 4,
 };
 
-export default function AddToBookmarkSelect({ blogId }: Props) {
+export default function AddToBookmarkSelect({ blogId, isBookmarked }: Props) {
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,7 +72,7 @@ export default function AddToBookmarkSelect({ blogId }: Props) {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/bookmark/category');
+      const response = await fetch('/api/category');
       const data = await response.json();
       setCategories(data.categories);
 
@@ -169,7 +170,7 @@ export default function AddToBookmarkSelect({ blogId }: Props) {
     <Box>
       <Tooltip title="Add to bookmarks">
         <IconButton onClick={handleClick} color="inherit">
-          {selectedCategories.size > 0 ? (
+          {selectedCategories.size > 0 || isBookmarked ? (
             <BookmarkIcon color="primary" />
           ) : (
             <BookmarkBorderIcon />

@@ -43,7 +43,7 @@ export default function EmailLoginForm() {
   const onSubmit = (data: LoginFormProps) => {
     signIn('credentials', {
       email: data.email,
-      password: CryptoJS.MD5(data.password).toString(),
+      password: data.password,
     });
   };
 

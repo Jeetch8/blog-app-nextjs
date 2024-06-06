@@ -14,15 +14,16 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const categoryBlogs = await prisma.bookmark_category_blog.findMany({
+    const categoryBlogs = await prisma.bookmark_category.findUnique({
       where: {
-        categoryId: params.categoryId,
-        category: {
-          userId: session.user.id,
-        },
+        id: params.categoryId,
       },
       include: {
-        blog: true,
+        category_blog: {
+          include: {
+            blog: true,
+          },
+        },
       },
     });
 

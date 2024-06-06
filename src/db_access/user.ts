@@ -14,3 +14,10 @@ export const getUserProfilePageInfo = async (username: string) => {
   });
   return user;
 };
+
+export const getUserUsername = async (username: string) => {
+  const user = await prisma.user.findUnique({
+    where: { username },
+  });
+  return user;
+};
