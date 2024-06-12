@@ -16,7 +16,14 @@ const withMDX = require('@next/mdx');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['res.cloudinary.com', 'picsum.photos'],
+    remotePatterns: [
+      {
+        hostname: 'res.cloudinary.com',
+      },
+      {
+        hostname: 'picsum.photos',
+      },
+    ],
   },
   pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
   experimental: {

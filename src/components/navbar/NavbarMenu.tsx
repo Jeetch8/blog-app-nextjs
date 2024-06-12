@@ -18,6 +18,7 @@ import {
   BarChart,
   Settings,
   Logout,
+  Login,
 } from '@mui/icons-material';
 import { User } from '@prisma/client';
 
@@ -38,12 +39,25 @@ interface NavbarMenuProps {
 }
 
 const NavbarMenu = ({ user }: NavbarMenuProps) => {
-  if (!user) return null;
+  const router = useRouter();
+  if (!user) {
+    return (
+      <Button
+        variant="outlined"
+        startIcon={<Login fontSize="small" />}
+        sx={{ px: 1, color: 'text.primary', borderRadius: 4 }}
+        onClick={() =>
+          router.push('/auth/signin?callbackUrl=' + window.location.href)
+        }
+      >
+        Login
+      </Button>
+    );
+  }
 
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(
     null
   );
-  const router = useRouter();
 
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElUser(event.currentTarget);
@@ -96,7 +110,6 @@ const NavbarMenu = ({ user }: NavbarMenuProps) => {
           onClick={() =>
             signOut({
               redirect: true,
-              callbackUrl: '/auth/signin',
             })
           }
         >

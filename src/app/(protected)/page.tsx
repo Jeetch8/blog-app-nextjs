@@ -29,7 +29,7 @@ const Home = () => {
       <Box sx={{ marginX: 'auto', width: 'fit-content' }}>
         <InfiniteScroll pageStart={0} loadMore={fetchPage} hasMore={true}>
           {blogs.map((obj, ind) => (
-            <BlogCard blog={obj} key={ind} />
+            <BlogCard blog={obj} key={ind} isBookmarked={false} />
           ))}
         </InfiniteScroll>
       </Box>

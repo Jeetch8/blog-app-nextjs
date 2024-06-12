@@ -2,10 +2,6 @@ import { getToken } from 'next-auth/jwt';
 import { NextRequestWithAuth, withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
 
-// export const config = {
-//   mathcer: ['/', '/:path*'],
-//   missing: ['/auth/', '/auth/:path*'],
-// };
 export default withAuth(
   async function middleware(req: NextRequestWithAuth) {
     const token = await getToken({ req: req });

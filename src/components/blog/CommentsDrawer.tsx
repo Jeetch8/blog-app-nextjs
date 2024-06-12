@@ -5,7 +5,6 @@ import { useCallback, useState } from 'react';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
 import Button from '@mui/material/Button';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import {
   Avatar,
   IconButton,
@@ -25,8 +24,8 @@ import {
 } from 'react-simple-wysiwyg';
 import { useParams } from 'next/navigation';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import useFetch from '@/hooks/useFetch';
-import { MapsUgcOutlined } from '@mui/icons-material';
+import { AcceptedMethods, useFetch } from '@/hooks/useFetch';
+import { MapsUgc, MapsUgcOutlined } from '@mui/icons-material';
 
 dayjs.extend(relativeTime);
 
@@ -46,12 +45,15 @@ interface CommentResponse {
 }
 
 interface Props {
+  hasUserCommentedBlog: boolean;
   totalComments: number;
 }
 
-export default function BlogCommentsDrawer({ totalComments }: Props) {
+export default function BlogCommentsDrawer({
+  hasUserCommentedBlog,
+  totalComments,
+}: Props) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const { data: session } = useSession();
   const [html, setHtml] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
   const [page, setPage] = useState(1);
@@ -59,10 +61,10 @@ export default function BlogCommentsDrawer({ totalComments }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { blogId } = useParams();
 
-  const { fetchData: createComment } = useFetch<CommentResponse>(
-    `/api/blog/${blogId}/comment`,
-    'POST'
-  );
+  const { doFetch: createComment } = useFetch<CommentResponse>({
+    url: `/api/blog/${blogId}/comment`,
+    method: AcceptedMethods.POST,
+  });
 
   const handleHtmlChange = (e: any) => {
     setHtml(e.target.value);
@@ -125,7 +127,11 @@ export default function BlogCommentsDrawer({ totalComments }: Props) {
   return (
     <div>
       <Button onClick={toggleDrawer(true)} sx={{ color: 'white' }}>
-        <MapsUgcOutlined color="inherit" />
+        {hasUserCommentedBlog ? (
+          <MapsUgc color="inherit" />
+        ) : (
+          <MapsUgcOutlined color="inherit" />
+        )}
         <span style={{ marginLeft: 6 }}>{totalComments}</span>
       </Button>
       <Drawer open={isDrawerOpen} anchor="right" onClose={toggleDrawer(false)}>

@@ -1,7 +1,21 @@
 import prisma from '@prisma_client/prisma';
 import { BlogStatus } from '@prisma/client';
 import readingTime from 'reading-time';
-import { marked } from 'marked';
+import redisClient from '@/lib/redis';
+import { IBlogPopulated } from '@/interfaces/blog.interface';
+import removeMd from 'remove-markdown';
+import { headers } from 'next/headers';
+import {
+  createBlogStatQuery,
+  findUserBlogBookmarkQuery,
+  findUserBlogCommentQuery,
+  findUserBlogLikeQuery,
+  incrementBlogStatQuery,
+  incrementBlogViewsQuery,
+  getBlogStatQuery,
+  createReadingHistoryQuery,
+} from './db_calls';
+import { UAParser } from 'ua-parser-js';
 
 interface CreateBlogData {
   title: string;
@@ -13,54 +27,6 @@ interface CreateBlogData {
   embeddings: number[];
 }
 
-export async function extractTextFromMarkdown(
-  markdown: string,
-  wordLimit: number = 200
-): Promise<string> {
-  // Remove HTML tags that might be in the markdown
-  const textWithoutHTML = markdown.replace(/<[^>]*>/g, '');
-
-  // Convert markdown to plain text
-  const plainText = await new Promise<string>((resolve) => {
-    marked.parse(
-      textWithoutHTML,
-      {
-        gfm: true, // GitHub Flavored Markdown
-        renderer: {
-          // Override default renderers to get plain text
-          paragraph: (text: string) => text + '\n',
-          heading: (text: string) => text + '\n',
-          list: (text: string) => text + '\n',
-          listitem: (text: string) => '- ' + text + '\n',
-          link: (_: any, __: any, text: string) => text,
-          image: (_: any, __: any, text: string) => text || '',
-          codespan: (text: string) => text,
-          code: (text: string) => text,
-          html: () => '',
-        },
-      },
-      (err: Error | null, result?: string) => {
-        resolve(err ? '' : result || '');
-      }
-    );
-  });
-  // Clean up the text
-  const cleanText = plainText
-    .replace(/\n+/g, ' ') // Replace multiple newlines with space
-    .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-    .trim();
-
-  // Get specified number of words
-  const words = cleanText.split(' ');
-  const limitedWords = words.slice(0, wordLimit);
-
-  // Add ellipsis if text was truncated
-  const excerpt =
-    limitedWords.join(' ') + (words.length > wordLimit ? '...' : '');
-
-  return excerpt;
-}
-
 export async function getBlogWithBlogId(blogId: string) {
   return await prisma.blog.findFirst({
     where: { id: blogId },
@@ -68,32 +34,70 @@ export async function getBlogWithBlogId(blogId: string) {
   });
 }
 
-export async function getBlogById(id: string, userId: string) {
-  const blog = await prisma.blog.findUnique({
-    where: { id },
-  });
+export async function getBlogById(
+  id: string,
+  userId: string
+): Promise<IBlogPopulated> {
+  if (!userId || !id) {
+    throw new Error('Invalid user or blog id');
+  }
+  const userAgent = headers().get('user-agent');
+  const parsedUserAgent = new UAParser(userAgent as string);
+  const cacheKey = `blog:${id}:${userId}`;
+  const cachedBlog = await redisClient.get(cacheKey);
+
+  const blogStat = await getBlogStatQuery(id);
+  if (!blogStat) {
+    await createBlogStatQuery(id);
+  }
+  if (cachedBlog) {
+    await Promise.all([
+      incrementBlogViewsQuery(id),
+      createReadingHistoryQuery({
+        userId,
+        blogId: id,
+        browser: parsedUserAgent.getBrowser().name || '',
+        os: parsedUserAgent.getOS().name || '',
+        device: parsedUserAgent.getDevice().type || '',
+        ip_address: headers().get('cf-connecting-ip') || '',
+        country: '',
+        region: '',
+        city: '',
+        referrer: headers().get('referer') || '',
+      }),
+    ]);
+    const blog = JSON.parse(cachedBlog);
+    const updatedBlog = {
+      ...blog,
+      number_of_views: blog.number_of_views + 1,
+    };
+    await redisClient.setEx(cacheKey, 300, JSON.stringify(updatedBlog));
+    return updatedBlog;
+  }
+
+  const [blog, hasUserLikedBlog, hasUserBookmarkedBlog, hasUserCommentedBlog] =
+    await Promise.all([
+      incrementBlogViewsQuery(id),
+      findUserBlogLikeQuery(id, userId),
+      findUserBlogBookmarkQuery(id),
+      findUserBlogCommentQuery(id, userId),
+    ]);
 
   if (!blog) {
     throw new Error('Blog not found');
   }
-
-  const date = new Date().toISOString().split('T')[0];
-  await updateBlogStats(blog.id, date, 'number_of_views');
-
-  const hasUserLikedBlog = await prisma.blog_like.findFirst({
-    where: {
-      blogId: id,
-      userId,
-    },
-  });
-
-  return { ...blog, hasUserLikedBlog: !!hasUserLikedBlog };
+  const blogData = {
+    ...blog,
+    hasUserLikedBlog: !!hasUserLikedBlog,
+    hasUserBookmarkedBlog: !!hasUserBookmarkedBlog,
+    hasUserCommentedBlog: !!hasUserCommentedBlog,
+  };
+  await redisClient.setEx(cacheKey, 300, JSON.stringify(blogData));
+  return blogData;
 }
 
 export async function createBlog(data: CreateBlogData, userId: string) {
-  const short_description = await extractTextFromMarkdown(
-    data.markdown_content
-  );
+  const short_description = removeMd(data.markdown_content);
 
   return await prisma.blog.create({
     data: {
@@ -122,16 +126,37 @@ export async function commentOnBlog(
   value: string,
   userId: string
 ) {
-  const blogComment = await prisma.blog_comment.create({
-    data: {
-      content: value,
-      userId,
-      blogId,
-    },
-  });
-
-  const date = new Date().toISOString().split('T')[0];
-  await updateBlogStats(blogId, date, 'number_of_comments');
+  const [blogComment] = await Promise.all([
+    prisma.blog_comment.create({
+      data: {
+        content: value,
+        userId,
+        blogId,
+      },
+    }),
+    prisma.blog_stat.upsert({
+      where: {
+        blogId_date: {
+          blogId,
+          date: new Date().toISOString().split('T')[0],
+        },
+      },
+      update: {
+        number_of_comments: { increment: 1 },
+      },
+      create: {
+        number_of_comments: 1,
+        date: new Date().toISOString().split('T')[0],
+        blogId,
+      },
+    }),
+    prisma.blog.update({
+      where: { id: blogId },
+      data: {
+        number_of_comments: { increment: 1 },
+      },
+    }),
+  ]);
 
   return blogComment;
 }
@@ -144,107 +169,7 @@ export async function likeBlog(blogId: string, userId: string) {
     },
   });
 
-  const date = new Date().toISOString().split('T')[0];
-  await updateBlogStats(blogId, date, 'number_of_likes');
-
   return blogLike;
-}
-
-async function updateBlogStats(
-  blogId: string,
-  date: string,
-  field: 'number_of_views' | 'number_of_comments' | 'number_of_likes'
-) {
-  await prisma.blog.update({
-    where: { id: blogId },
-    data: {
-      [field]: { increment: 1 },
-      blog_stats: {
-        upsert: {
-          create: {
-            date,
-            [field]: 1,
-          },
-          update: {
-            [field]: { increment: 1 },
-          },
-          where: {
-            blog: {
-              id: blogId,
-              createdAt: date,
-            },
-            id: blogId,
-            date,
-          },
-        },
-      },
-    },
-  });
-}
-
-export async function getBlogWithAuthor(id: string) {
-  const blog = await prisma.blog.findUnique({
-    where: { id },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          image: true,
-          email: true,
-          username: true,
-          profile: {
-            select: {
-              bio: true,
-              tagline: true,
-              followers_count: true,
-              following_count: true,
-            },
-          },
-        },
-      },
-      topic: true,
-      comments: {
-        include: {
-          user: {
-            select: {
-              name: true,
-              image: true,
-              username: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      },
-      likes: {
-        include: {
-          user: {
-            select: {
-              name: true,
-              image: true,
-              username: true,
-            },
-          },
-        },
-      },
-      _count: {
-        select: {
-          comments: true,
-          likes: true,
-        },
-      },
-    },
-  });
-
-  if (!blog) {
-    throw new Error('Blog not found');
-  }
-
-  // Update view count
-  const date = new Date().toISOString().split('T')[0];
-  await updateBlogStats(blog.id, date, 'number_of_views');
-
-  return blog;
 }
 
 export async function getUserBookmarkCategories(userId: string) {

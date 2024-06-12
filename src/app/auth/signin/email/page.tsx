@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import CryptoJS from 'crypto-js';
 import { signIn } from 'next-auth/react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -117,6 +116,18 @@ export default function EmailLoginForm() {
             sx={{ mt: 3, mb: 2 }}
           >
             Sign In
+          </Button>
+          <Button
+            variant="text"
+            fullWidth
+            onClick={() =>
+              signIn('credentials', {
+                email: 'guest@example.com',
+                password: 'Password!@12',
+              })
+            }
+          >
+            Sign in as guest
           </Button>
         </Box>
       </Box>

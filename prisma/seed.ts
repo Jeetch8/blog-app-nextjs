@@ -32,6 +32,24 @@ interface MarkdownFile {
   content: string;
 }
 
+const sampleBrowsers = ['Chrome', 'Firefox', 'Safari', 'Edge', 'Opera'];
+
+const sampleReferrers = [
+  'https://google.com/asdasdad',
+  'https://twitter.com/asdasdad',
+  'https://facebook.com/asdasdad',
+  'https://linkedin.com/asdasdad',
+  'https://github.com/asdasdad',
+  'https://dev.to/asdasdad',
+  'https://medium.com/asdasdad',
+  'https://reddit.com/asdasdad',
+  'https://bing.com/asdasdad',
+  'https://stackoverflow.com/asdasdad',
+];
+
+const sampleOperatingSystems = ['Windows', 'macOS', 'Linux', 'iOS'];
+const devices = ['android', 'desktop', 'tablet'];
+
 async function uploadMarkdownFiles(
   folderPath: string
 ): Promise<MarkdownFile[]> {
@@ -197,26 +215,30 @@ function createTopic(): Omit<blog_topic, 'id'> {
 
 function generateBlogStats(
   blogId: string,
-  date: string
+  createdAt: Date
 ): Omit<blog_stat, 'id'> {
   return {
     blogId,
     number_of_views: faker.number.int({ max: 1000 }),
     number_of_likes: faker.number.int({ max: 1000 }),
     number_of_comments: faker.number.int({ max: 1000 }),
-    date,
-    createdAt: faker.date.past(),
+    createdAt,
     updatedAt: faker.date.past(),
   };
 }
 
 function createReadingHistory(
-  userId: string,
-  blogId: string
+  blogId: string,
+  userId?: string
 ): Omit<Reading_history, 'id'> {
   return {
-    userId,
+    userId: userId || '',
     blogId,
+    referrer: faker.helpers.arrayElement(sampleReferrers),
+    browser: faker.helpers.arrayElement(sampleBrowsers),
+    os: faker.helpers.arrayElement(sampleOperatingSystems),
+    device: faker.helpers.arrayElement(devices),
+    ip_address: faker.internet.ip(),
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
   };
@@ -291,8 +313,23 @@ const getAllFilesFromS3 = async (
   }
 };
 
+const resetTheDatabase = async () => {
+  await prisma.user_Profile.deleteMany();
+  await prisma.account.deleteMany();
+  await prisma.session.deleteMany();
+  await prisma.blog_comment.deleteMany();
+  await prisma.blog_like.deleteMany();
+  await prisma.blog_stat.deleteMany();
+  await prisma.bookmark_category.deleteMany();
+  await prisma.bookmark_category_blog.deleteMany();
+  await prisma.reading_history.deleteMany();
+  await prisma.blog.deleteMany();
+  await prisma.user.deleteMany();
+};
+
 async function seedFakeData() {
   try {
+    await resetTheDatabase();
     const markdownFiles = await getAllFilesFromS3(process.env.AWS_BUCKET_NAME!);
     const userIds: string[] = [];
     const topicIds: string[] = [];
@@ -302,6 +339,27 @@ async function seedFakeData() {
       const user = await pushUser();
       userIds.push(user.id);
     }
+
+    // Creating guest user
+    const guestUser = await prisma.user.create({
+      data: {
+        name: 'Guest',
+        email: 'guest@example.com',
+        password: await hash('Password!@12', 10),
+        image: faker.image.avatar(),
+        username: faker.internet.username(),
+        emailVerified: null,
+        createdAt: faker.date.past(),
+        updatedAt: faker.date.past(),
+        profile: { create: createFakeProfile() },
+        accounts: { create: [createFakeAccount(), createFakeAccount()] },
+      },
+      include: {
+        profile: true,
+        accounts: true,
+      },
+    });
+    userIds.push(guestUser.id);
 
     for (let i = 0; i < 20; i++) {
       const topic = await pushTopic();
@@ -362,15 +420,29 @@ async function seedFakeData() {
       }
     }
 
+    for (let j = 0; j < blogIds.length; j++) {
+      const readdingHistoryPromises = [];
+      for (let i = 0; i < faker.number.int({ min: 1000, max: 10000 }); i++) {
+        readdingHistoryPromises.push(
+          prisma.reading_history.create({
+            data: createReadingHistory(
+              blogIds[j],
+              faker.helpers.arrayElement(userIds)
+            ),
+          })
+        );
+      }
+      await Promise.all(readdingHistoryPromises);
+    }
+
     // Create blog stats
     const blogStatsArr: any = [];
     blogIds.forEach((blogId) => {
       let temp = dayjs().subtract(365, 'day');
       for (let i = 0; i < 365; i++) {
         let addedDate = temp.add(1, 'day');
-        let date = addedDate.format('YYYY-MM-DD');
+        blogStatsArr.push(generateBlogStats(blogId, addedDate.toDate()));
         temp = addedDate;
-        blogStatsArr.push(generateBlogStats(blogId, date));
       }
     });
 

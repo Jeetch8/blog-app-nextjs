@@ -135,9 +135,12 @@ export const authOptions: NextAuthOptions = {
       return !!existingUser;
     },
     async redirect({ baseUrl, url }) {
-      console.log(url);
+      const callbackUrl = new URL(url).searchParams.get('callbackUrl');
+      if (callbackUrl) {
+        return callbackUrl;
+      }
       if (url.startsWith('/auth/signin')) {
-        return `${baseUrl}/auth/signin`;
+        return `${baseUrl}/`;
       }
       return baseUrl;
     },

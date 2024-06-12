@@ -22,7 +22,8 @@ import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import AddIcon from '@mui/icons-material/Add';
 import { useSession } from 'next-auth/react';
-import useFetch from '@/hooks/useFetch';
+import { AcceptedMethods, useFetch } from '@/hooks/useFetch';
+import { bookmark_category } from '@prisma/client';
 
 interface Category {
   id: string;
@@ -62,12 +63,19 @@ export default function AddToBookmarkSelect({ blogId, isBookmarked }: Props) {
   const [newCategoryDescription, setNewCategoryDescription] = useState('');
   const { data: session } = useSession();
 
-  const { fetchData: addToCategory } = useFetch<any>('', 'POST');
-  const { fetchData: removeFromCategory } = useFetch<any>('', 'DELETE');
-  const { fetchData: createCategory } = useFetch<any>(
-    '/api/bookmark/category',
-    'POST'
-  );
+  const { doFetch: addToCategory } = useFetch<any>({
+    url: '',
+    method: AcceptedMethods.POST,
+  });
+  const { doFetch: removeFromCategory } = useFetch<any>({
+    url: '',
+    method: AcceptedMethods.DELETE,
+  });
+  const { doFetch: createCategoryFetch, dataRef: createCategoryData } =
+    useFetch<{ category: bookmark_category }>({
+      url: '/api/bookmark/category',
+      method: AcceptedMethods.POST,
+    });
 
   const fetchCategories = async () => {
     try {
@@ -138,19 +146,22 @@ export default function AddToBookmarkSelect({ blogId, isBookmarked }: Props) {
     if (!newCategoryTitle.trim()) return;
 
     try {
-      const result = await createCategory({
+      await createCategoryFetch({
         title: newCategoryTitle,
         description: newCategoryDescription,
       });
 
       // Add blog to the newly created category
-      await fetch(`/api/bookmark/category/${result.category.id}/bookmark`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ blogId }),
-      });
+      await fetch(
+        `/api/bookmark/category/${createCategoryData?.current?.category.id}/bookmark`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ blogId }),
+        }
+      );
 
       setIsCreateModalOpen(false);
       setNewCategoryTitle('');

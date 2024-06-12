@@ -16,6 +16,9 @@ import dayjs from 'dayjs';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import InfiniteScroll from 'react-infinite-scroller';
+import { useParams } from 'next/navigation';
+import { AcceptedMethods, useFetch } from '@/hooks/useFetch';
+import Tooltip from '@mui/material/Tooltip';
 
 interface Like {
   id: string;
@@ -29,7 +32,6 @@ interface Like {
 
 interface Props {
   numberOfLikes: number;
-  blogId: string;
   hasUserLikedBlog: boolean;
 }
 
@@ -50,13 +52,44 @@ const modalStyle = {
 
 export default function BlogLikesDrawer({
   numberOfLikes,
-  blogId,
   hasUserLikedBlog,
 }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [likes, setLikes] = useState<Like[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [isLiking, setIsLiking] = useState(false);
+  const [localHasLiked, setLocalHasLiked] = useState(hasUserLikedBlog);
+  const [localLikesCount, setLocalLikesCount] = useState(numberOfLikes);
+  const { blogId } = useParams();
+
+  const { doFetch: likeBlog } = useFetch<any>({
+    url: `/api/blog/${blogId}/likes`,
+    method: AcceptedMethods.PATCH,
+  });
+
+  const handleLike = async () => {
+    if (isLiking || localHasLiked) return;
+
+    try {
+      setIsLiking(true);
+      await likeBlog();
+      setLocalHasLiked(true);
+      setLocalLikesCount((prev) => prev + 1);
+
+      // Refresh likes list if modal is open
+      if (isModalOpen) {
+        setLikes([]);
+        setPage(1);
+        setHasMore(true);
+        fetchLikes(1);
+      }
+    } catch (error) {
+      console.error('Failed to like blog:', error);
+    } finally {
+      setIsLiking(false);
+    }
+  };
 
   const fetchLikes = useCallback(
     async (pageNum: number) => {
@@ -80,8 +113,19 @@ export default function BlogLikesDrawer({
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: '1px' }}>
-        <IconButton aria-label="like" disabled={hasUserLikedBlog}>
-          {hasUserLikedBlog ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+        <IconButton
+          aria-label="like"
+          onClick={handleLike}
+          disabled={localHasLiked || isLiking}
+          color={localHasLiked ? 'primary' : 'default'}
+        >
+          {isLiking ? (
+            <CircularProgress size={20} />
+          ) : localHasLiked ? (
+            <FavoriteIcon color="primary" />
+          ) : (
+            <FavoriteBorderIcon color="secondary" />
+          )}
         </IconButton>
         <Box
           component={'span'}
@@ -92,7 +136,9 @@ export default function BlogLikesDrawer({
             ':hover': { color: 'primary.main' },
           }}
         >
-          <span aria-label="view likes">{numberOfLikes}</span>
+          <Tooltip title="View likes">
+            <span aria-label="view likes">{localLikesCount}</span>
+          </Tooltip>
         </Box>
       </Box>
 

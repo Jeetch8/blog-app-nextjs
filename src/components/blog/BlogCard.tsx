@@ -1,7 +1,7 @@
 import Typography from '@mui/material/Typography';
 import { Avatar, AvatarGroup, Box, Button, Stack } from '@mui/material';
 import dayjs from 'dayjs';
-import AddToBookmarSelect from '@/components/blog/AddToBookmarSelect';
+import AddToBookmarkSelect from '@/components/blog/AddToBookmarkSelect';
 import Image from 'next/image';
 import { IHomeBlog } from '@/app/(protected)/page';
 import Link from 'next/link';
@@ -115,7 +115,7 @@ export default function BlogCard({
               {blog.number_of_comments} comments
             </Typography>
           </Stack>
-          <AddToBookmarSelect isBookmarked={isBookmarked} blogId={blog.id} />
+          <AddToBookmarkSelect isBookmarked={isBookmarked} blogId={blog.id} />
         </Stack>
       </Box>
     </Stack>

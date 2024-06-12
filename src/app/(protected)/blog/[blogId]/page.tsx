@@ -27,16 +27,15 @@ import rehypeSlug from 'rehype-slug';
 import CopyToClipboard from '@/components/CopyToClipboard';
 import rehypeToc from 'rehype-toc';
 import Link from 'next/link';
-import {
-  BookmarkAddOutlined,
-  FavoriteBorderOutlined,
-  MapsUgcOutlined,
-  ShareOutlined,
-} from '@mui/icons-material';
 import BlogLikesDrawer from '@/components/blog/BlogLikesDrawer';
 import BlogCommentsDrawer from '@/components/blog/CommentsDrawer';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { getBlogById } from '@/db_access/blog';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import AddToBookmarkSelect from '@/components/blog/AddToBookmarkSelect';
+import ShareDropDown from '@/components/blog/ShareDropDown';
 
 dayjs.extend(relativeTime);
 
@@ -83,10 +82,8 @@ export async function generateStaticParams() {
 }
 
 export default async function BlogPage({ params }: BlogPageProps) {
-  const blog = await prisma.blog.findUnique({
-    where: { id: params.blogId },
-    include: { user: true },
-  });
+  const session = await getServerSession(authOptions);
+  const blog = await getBlogById(params.blogId, session?.user?.id!);
 
   if (!blog) notFound();
 
@@ -94,6 +91,9 @@ export default async function BlogPage({ params }: BlogPageProps) {
     process.env.AWS_BUCKET_NAME!,
     'blogs/seed/' + blog.markdown_file_name
   );
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const fullUrl = `${baseUrl}/blog/${params.blogId}`;
 
   return (
     <Container component="article" sx={{ color: 'text.primary' }}>
@@ -215,21 +215,26 @@ export default async function BlogPage({ params }: BlogPageProps) {
           <Stack direction={'row'} alignItems={'center'} spacing={1}>
             <BlogLikesDrawer
               numberOfLikes={blog.number_of_likes}
-              blogId={blog.id}
-              hasUserLikedBlog={false}
+              hasUserLikedBlog={blog.hasUserLikedBlog}
             />
           </Stack>
           <Divider orientation="vertical" />
           <Stack direction={'row'} alignItems={'center'} spacing={1}>
-            <BlogCommentsDrawer totalComments={blog.number_of_comments} />
+            <BlogCommentsDrawer
+              totalComments={blog.number_of_comments}
+              hasUserCommentedBlog={blog.hasUserCommentedBlog}
+            />
           </Stack>
           <Divider orientation="vertical" />
           <Stack direction={'row'} alignItems={'center'} spacing={1}>
-            <BookmarkAddOutlined />
+            <AddToBookmarkSelect
+              blogId={blog.id}
+              isBookmarked={blog.hasUserBookmarkedBlog}
+            />
           </Stack>
           <Divider orientation="vertical" />
           <Stack direction={'row'} alignItems={'center'} spacing={1}>
-            <ShareOutlined />
+            <ShareDropDown url={fullUrl} title={blog.title} />
           </Stack>
         </Stack>
       </Stack>
