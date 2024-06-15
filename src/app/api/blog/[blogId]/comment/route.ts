@@ -1,7 +1,11 @@
-import prisma from '@prisma_client/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { db } from '@/db/drizzle';
+import { blogComments, blogs, users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { desc } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 export async function GET(
   req: NextRequest,
@@ -11,27 +15,25 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = 15;
-    const skip = (page - 1) * limit;
+    const offset = (page - 1) * limit;
 
-    const comments = await prisma.blog_comment.findMany({
-      where: {
-        blogId: params.blogId,
-      },
-      include: {
+    const comments = await db
+      .select({
+        id: blogComments.id,
+        content: blogComments.content,
+        createdAt: blogComments.createdAt,
         user: {
-          select: {
-            name: true,
-            image: true,
-            username: true,
-          },
+          name: users.name,
+          image: users.image,
+          username: users.username,
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: limit,
-      skip: skip,
-    });
+      })
+      .from(blogComments)
+      .leftJoin(users, eq(blogComments.userId, users.id))
+      .where(eq(blogComments.blogId, params.blogId))
+      .orderBy(desc(blogComments.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     return NextResponse.json({ comments });
   } catch (error) {
@@ -59,34 +61,23 @@ export async function POST(
         { status: 400 }
       );
     }
-
-    const comment = await prisma.blog_comment.create({
-      data: {
-        content,
-        blogId: params.blogId,
-        userId: session.user.id,
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-            image: true,
-            username: true,
-          },
-        },
-      },
+    const comment = await db.transaction(async (tx) => {
+      const [comment] = await tx
+        .insert(blogComments)
+        .values({
+          content,
+          blogId: params.blogId,
+          userId: session.user.id,
+        })
+        .returning();
+      await tx
+        .update(blogs)
+        .set({
+          numberOfComments: sql`${blogs.numberOfComments} + 1`,
+        })
+        .where(eq(blogs.id, params.blogId));
+      return comment;
     });
-
-    // Update blog comment count
-    await prisma.blog.update({
-      where: { id: params.blogId },
-      data: {
-        number_of_comments: {
-          increment: 1,
-        },
-      },
-    });
-
     return NextResponse.json({ comment });
   } catch (error) {
     return NextResponse.json(

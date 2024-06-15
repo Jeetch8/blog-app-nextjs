@@ -20,7 +20,7 @@ import {
   Logout,
   Login,
 } from '@mui/icons-material';
-import { User } from '@prisma/client';
+import { users } from '@/db/schema';
 
 const settings = [
   { title: 'Profile', path: '/profile', icon: <Person fontSize="small" /> },
@@ -35,7 +35,7 @@ const settings = [
 ];
 
 interface NavbarMenuProps {
-  user: User;
+  user: typeof users.$inferSelect;
 }
 
 const NavbarMenu = ({ user }: NavbarMenuProps) => {

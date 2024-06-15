@@ -1,4 +1,7 @@
-import prisma from '@prisma_client/prisma';
+import { db } from '@/db/drizzle';
+import { blogStats, readingHistories } from '@/db/schema';
+import { and, gte, lte, eq } from 'drizzle-orm';
+
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { NextRequest, NextResponse } from 'next/server';
@@ -32,30 +35,29 @@ export async function GET(req: NextRequest) {
     throw new Error('Dates must be in YYYY-MM-DD format');
   }
 
-  const stats = await prisma.blog_stat.findMany({
-    where: {
-      blogId: blogId,
-      createdAt: {
-        gte: new Date(startDate).toISOString(),
-        lte: new Date(endDate).toISOString(),
-      },
-    },
-    orderBy: {
-      createdAt: 'asc',
-    },
-  });
-  const readingHistory = await prisma.reading_history.findMany({
-    where: {
-      blogId: blogId,
-      createdAt: {
-        gte: new Date(startDate).toISOString(),
-        lte: new Date(endDate).toISOString(),
-      },
-    },
-    orderBy: {
-      createdAt: 'asc',
-    },
-  });
+  const stats = await db
+    .select()
+    .from(blogStats)
+    .where(
+      and(
+        eq(blogStats.blogId, blogId),
+        gte(blogStats.createdAt, new Date(startDate).toISOString()),
+        lte(blogStats.createdAt, new Date(endDate).toISOString())
+      )
+    )
+    .orderBy(blogStats.createdAt);
+
+  const readingHistory = await db
+    .select()
+    .from(readingHistories)
+    .where(
+      and(
+        eq(readingHistories.blogId, blogId),
+        gte(readingHistories.createdAt, new Date(startDate)),
+        lte(readingHistories.createdAt, new Date(endDate))
+      )
+    )
+    .orderBy(readingHistories.createdAt);
 
   const allDates: string[] = [];
   let currentDate = dayjs(startDate);
@@ -150,15 +152,13 @@ export async function GET(req: NextRequest) {
       datesPointer++;
       chartPointer++;
     } else if (dayjs(currentStat.createdAt).isSame(currentDate)) {
-      result.chartData.reaction.views[chartPointer] =
-        currentStat.number_of_views;
-      result.chartData.reaction.likes[chartPointer] =
-        currentStat.number_of_likes;
+      result.chartData.reaction.views[chartPointer] = currentStat.numberOfViews;
+      result.chartData.reaction.likes[chartPointer] = currentStat.numberOfLikes;
       result.chartData.reaction.comments[chartPointer] =
-        currentStat.number_of_comments;
-      result.totals.total_views += currentStat.number_of_views;
-      result.totals.total_likes += currentStat.number_of_likes;
-      result.totals.total_comments += currentStat.number_of_comments;
+        currentStat.numberOfComments;
+      result.totals.total_views += currentStat.numberOfViews;
+      result.totals.total_likes += currentStat.numberOfLikes;
+      result.totals.total_comments += currentStat.numberOfComments;
       statsPointer++;
       datesPointer++;
       chartPointer++;

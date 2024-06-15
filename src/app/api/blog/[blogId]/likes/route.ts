@@ -1,7 +1,9 @@
-import prisma from '@prisma_client/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { db } from '@/db/drizzle';
+import { blogLikes, blogs } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
 
 export async function GET(
   req: NextRequest,
@@ -13,24 +15,20 @@ export async function GET(
     const limit = 20;
     const skip = (page - 1) * limit;
 
-    const likes = await prisma.blog_like.findMany({
-      where: {
-        blogId: params.blogId,
-      },
-      include: {
+    const likes = await db.query.blogLikes.findMany({
+      where: eq(blogLikes.blogId, params.blogId),
+      with: {
         user: {
-          select: {
+          columns: {
             name: true,
             image: true,
             username: true,
           },
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: limit,
-      skip: skip,
+      orderBy: (likes, { desc }) => [desc(likes.createdAt)],
+      limit: limit,
+      offset: skip,
     });
 
     return NextResponse.json({ likes });
@@ -53,33 +51,41 @@ export async function PATCH(
     }
 
     // Create like and increment blog likes count in a transaction
-    const [like] = await prisma.$transaction([
-      prisma.blog_like.create({
-        data: {
+    const like = await db.transaction(async (tx) => {
+      const [newLike] = await tx
+        .insert(blogLikes)
+        .values({
           userId: session.user.id,
           blogId: params.blogId,
-        },
-        include: {
-          user: {
-            select: {
-              name: true,
-              image: true,
-              username: true,
-            },
+        })
+        .returning();
+
+      await tx
+        .update(blogs)
+        .set({ numberOfLikes: sql`${blogs.numberOfLikes} + 1` })
+        .where(eq(blogs.id, params.blogId));
+
+      return newLike;
+    });
+
+    // Get the like with user details
+    const likeWithUser = await db.query.blogLikes.findFirst({
+      where: eq(blogLikes.id, like.id),
+      with: {
+        user: {
+          columns: {
+            name: true,
+            image: true,
+            username: true,
           },
         },
-      }),
-      prisma.blog.update({
-        where: { id: params.blogId },
-        data: {
-          number_of_likes: { increment: 1 },
-        },
-      }),
-    ]);
+      },
+    });
 
-    return NextResponse.json({ like });
+    return NextResponse.json({ like: likeWithUser });
   } catch (error) {
-    if ((error as any).code === 'P2002') {
+    if ((error as any).code === '23505') {
+      // Unique constraint violation in PostgreSQL
       return NextResponse.json(
         { error: 'Already liked this blog' },
         { status: 400 }

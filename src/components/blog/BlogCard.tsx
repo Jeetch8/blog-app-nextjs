@@ -7,13 +7,13 @@ import { IHomeBlog } from '@/app/(protected)/page';
 import Link from 'next/link';
 
 export default function BlogCard({
-  blog,
+  data,
   isBookmarked,
 }: {
-  blog: IHomeBlog;
+  data: IHomeBlog;
   isBookmarked: boolean;
 }) {
-  const createdAt = dayjs(blog.createdAt).fromNow();
+  const createdAt = dayjs(data.createdAt).fromNow();
 
   return (
     <Stack
@@ -28,10 +28,10 @@ export default function BlogCard({
       }}
     >
       <Stack direction="row" spacing={2}>
-        <Avatar src={blog?.user?.image || ''} aria-label="profile" />
+        <Avatar src={data.author.image || ''} aria-label="profile" />
         <Stack direction="column">
           <Typography fontSize={14} fontWeight={600}>
-            {blog.user.name}
+            {data.author.name}
           </Typography>
           <Typography fontSize={12} color="text.secondary">
             {createdAt}
@@ -42,21 +42,21 @@ export default function BlogCard({
         <Box>
           <Typography
             component={Link}
-            href={`/blog/${blog.id}`}
+            href={`/blog/${data.id}`}
             fontSize={20}
             fontWeight={600}
             sx={{ textDecoration: 'none', color: 'text.primary' }}
           >
-            {blog.title}
+            {data.title}
           </Typography>
           <Typography fontSize={14} color="text.secondary">
-            {blog.short_description}
+            {data.shortDescription}
           </Typography>
         </Box>
-        {blog.banner_img && (
+        {data.bannerImg && (
           <Box>
             {/* <Image
-        src={blog.banner_img}
+        src=.banner_img}
         alt="banner"
         width={300}
         height={200}
@@ -66,7 +66,7 @@ export default function BlogCard({
               height={100}
               width={160}
               style={{ borderRadius: 10 }}
-              src={blog.banner_img}
+              src={data.bannerImg}
               alt="banner"
             />
           </Box>
@@ -81,22 +81,22 @@ export default function BlogCard({
         >
           <Avatar
             sx={{ height: 25, width: 25 }}
-            src={blog?.user?.image || ''}
+            src={data.author.image || ''}
             aria-label="profile"
           />
           <Avatar
             sx={{ height: 25, width: 25 }}
-            src={blog?.user?.image || ''}
+            src={data.author.image || ''}
             aria-label="profile"
           />
           <Avatar
             sx={{ height: 25, width: 25 }}
-            src={blog?.user?.image || ''}
+            src={data.author.image || ''}
             aria-label="profile"
           />
           <Avatar
             sx={{ height: 25, width: 25 }}
-            src={blog?.user?.image || ''}
+            src={data.author.image || ''}
             aria-label="profile"
           />
         </AvatarGroup>
@@ -108,14 +108,14 @@ export default function BlogCard({
         >
           <Stack direction="row" spacing={0.5}>
             <Typography fontSize={14} color="text.secondary">
-              {blog.number_of_likes} likes
+              {data.numberOfLikes} likes
             </Typography>
             <span>·</span>
             <Typography fontSize={14} color="text.secondary">
-              {blog.number_of_comments} comments
+              {data.numberOfComments} comments
             </Typography>
           </Stack>
-          <AddToBookmarkSelect isBookmarked={isBookmarked} blogId={blog.id} />
+          <AddToBookmarkSelect isBookmarked={isBookmarked} blogId={data.id} />
         </Stack>
       </Box>
     </Stack>

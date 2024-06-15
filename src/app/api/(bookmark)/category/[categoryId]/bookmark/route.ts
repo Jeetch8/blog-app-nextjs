@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import prisma from '@prisma_client/prisma';
+import { db } from '@/db/drizzle';
+import { bookmarkCategories, bookmarkCategoryBlogs } from '@/db/schema';
 
 // Add blog to category
 export async function POST(
@@ -22,17 +23,15 @@ export async function POST(
       );
     }
 
-    const bookmark = await prisma.bookmark_category_blog.create({
-      data: {
+    const bookmark = await db
+      .insert(bookmarkCategoryBlogs)
+      .values({
+        bookmarkedByUserId: session.user.id,
         categoryId: params.categoryId,
         blogId,
         note,
-      },
-      include: {
-        blog: true,
-      },
-    });
-
+      })
+      .returning();
     return NextResponse.json({ bookmark });
   } catch (error) {
     return NextResponse.json(

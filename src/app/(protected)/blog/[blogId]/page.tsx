@@ -2,7 +2,6 @@ import './styles.css';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { MDXRemote } from 'next-mdx-remote/rsc';
-import prisma from '@prisma_client/prisma';
 import {
   Container,
   Typography,
@@ -36,6 +35,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import AddToBookmarkSelect from '@/components/blog/AddToBookmarkSelect';
 import ShareDropDown from '@/components/blog/ShareDropDown';
+import { db } from '@/db/drizzle';
+import * as schema from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 dayjs.extend(relativeTime);
 
@@ -57,23 +59,22 @@ lowlight.register('bash', bash);
 export async function generateMetadata({
   params,
 }: BlogPageProps): Promise<Metadata> {
-  const blog = await prisma.blog.findUnique({
-    where: { id: params.blogId },
-    include: { user: true },
+  const blog = await db.query.blogs.findFirst({
+    where: eq(schema.blogs.id, params.blogId),
+    with: { author: true },
   });
-
   if (!blog) return { title: 'Blog not found' };
 
   return {
     title: blog.title,
-    description: blog.short_description,
-    authors: [{ name: blog.user.name }],
+    description: blog.shortDescription,
+    authors: [{ name: blog.author.name }],
   };
 }
 
 export async function generateStaticParams() {
-  const blogs = await prisma.blog.findMany({
-    select: { id: true },
+  const blogs = await db.query.blogs.findMany({
+    columns: { id: true },
   });
 
   return blogs.map((blog) => ({

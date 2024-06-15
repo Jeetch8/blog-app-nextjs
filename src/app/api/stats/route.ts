@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@prisma_client/prisma';
 import { authOptions } from '../auth/[...nextauth]/route';
 import { getServerSession } from 'next-auth';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
-import { Blog, blog_stat } from '@prisma/client';
+import { db } from '@/db/drizzle';
+import { blogs, blogStats, readingHistories } from '@/db/schema';
+import { and, eq, gte, lte } from 'drizzle-orm';
+import type { blogs as BlogType } from '@/db/schema';
 
 dayjs.extend(isBetween);
 
@@ -25,7 +27,7 @@ export interface StatsResponse {
     browsers: IPercentageTable;
     operating_systems: IPercentageTable;
     devices: IPercentageTable;
-    blogs: Partial<Blog>[];
+    blogs: Partial<typeof BlogType.$inferSelect>[];
   };
   totals: {
     total_views: number;
@@ -60,83 +62,45 @@ export async function GET(req: NextRequest) {
     }
 
     // Get all blogs by the user
-    const userBlogs = await prisma.blog.findMany({
-      where: {
-        authorId: userId,
-      },
-      select: {
-        id: true,
-        title: true,
-        number_of_comments: true,
-        number_of_likes: true,
-        number_of_views: true,
-        reading_time: true,
-        createdAt: true,
-        banner_img: true,
-      },
-    });
+    const userBlogs = await db
+      .select({
+        id: blogs.id,
+        title: blogs.title,
+        numberOfComments: blogs.numberOfComments,
+        numberOfLikes: blogs.numberOfLikes,
+        numberOfViews: blogs.numberOfViews,
+        readingTime: blogs.readingTime,
+        createdAt: blogs.createdAt,
+        bannerImg: blogs.bannerImg,
+      })
+      .from(blogs)
+      .where(eq(blogs.authorId, userId));
+
     const blogIds = userBlogs.map((blog) => blog.id);
-    const readingHistory = await prisma.reading_history.findMany({
-      where: {
-        blogId: {
-          in: blogIds,
-        },
-        // createdAt: {
-        //   gte: endDate,
-        //   lte: startDate,
-        // },
-        AND: [
-          {
-            createdAt: {
-              gte: endDate,
-            },
-          },
-          {
-            createdAt: {
-              lte: startDate,
-            },
-          },
-        ],
-      },
-    });
-    // Get stats for all user's blogs within date range
-    const stats = await prisma.blog_stat.findMany({
-      where: {
-        blogId: {
-          in: blogIds,
-        },
-        createdAt: {
-          gte: endDate,
-          lte: startDate,
-        },
-        // AND: [
-        //   {
-        //     createdAt: {
-        //       gte: new Date(endDate + ' 00:00:00'),
-        //     },
-        //   },
-        //   {
-        //     createdAt: {
-        //       lte: new Date(startDate + ' 23:59:59'),
-        //     },
-        //   },
-        // ],
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
-    console.log(
-      startDate,
-      endDate,
-      stats.length,
-      'stats',
-      blogIds,
-      blogIds.length,
-      'blogIds',
-      readingHistory.length,
-      'readingHistory'
-    );
+
+    const readingHistory = await db
+      .select()
+      .from(readingHistories)
+      .where(
+        and(
+          eq(readingHistories.blogId, blogIds[0]),
+          gte(readingHistories.createdAt, new Date(endDate)),
+          lte(readingHistories.createdAt, new Date(startDate))
+        )
+      );
+
+    const stats = await db
+      .select()
+      .from(blogStats)
+      .where(
+        and(
+          eq(blogStats.blogId, blogIds[0]),
+          gte(blogStats.createdAt, new Date(endDate).toISOString()),
+          lte(blogStats.createdAt, new Date(startDate).toISOString())
+        )
+      )
+      .orderBy(blogStats.createdAt);
+
     const allDates: string[] = [];
     let currentDate = dayjs(startDate);
     const lastDate = dayjs(endDate);
@@ -151,8 +115,9 @@ export async function GET(req: NextRequest) {
     }
 
     let currentBlogIndex = 0;
-    const allBlogsStats: blog_stat[][] = [];
+    const allBlogsStats: (typeof stats)[] = [];
     const blogIndexHashMap: Record<string, number> = {};
+
     for (let i = 0; i < stats.length; i++) {
       const blogIndex = blogIndexHashMap[stats[i].blogId];
       if (!blogIndex) {
@@ -163,6 +128,7 @@ export async function GET(req: NextRequest) {
       const blogStatsArray = allBlogsStats[blogIndex];
       blogStatsArray?.push(stats[i]);
     }
+
     const result: StatsResponse = {
       chartData: {
         reaction: {
@@ -256,13 +222,13 @@ export async function GET(req: NextRequest) {
           datesPointer++;
           chartPointer++;
         } else if (dayjs(currentStat.createdAt).isSame(currentDate)) {
-          tempReactionsObj.views[chartPointer] = currentStat.number_of_views;
-          tempReactionsObj.likes[chartPointer] = currentStat.number_of_likes;
+          tempReactionsObj.views[chartPointer] = currentStat.numberOfViews;
+          tempReactionsObj.likes[chartPointer] = currentStat.numberOfLikes;
           tempReactionsObj.comments[chartPointer] =
-            currentStat.number_of_comments;
-          tempTotalsObj.total_views += currentStat.number_of_views;
-          tempTotalsObj.total_likes += currentStat.number_of_likes;
-          tempTotalsObj.total_comments += currentStat.number_of_comments;
+            currentStat.numberOfComments;
+          tempTotalsObj.total_views += currentStat.numberOfViews;
+          tempTotalsObj.total_likes += currentStat.numberOfLikes;
+          tempTotalsObj.total_comments += currentStat.numberOfComments;
           statsPointer++;
           datesPointer++;
           chartPointer++;

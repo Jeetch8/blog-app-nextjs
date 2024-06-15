@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import prisma from '@prisma_client/prisma';
+import { db } from '@/db/drizzle';
+import { blogs, bookmarkCategories, bookmarkCategoryBlogs } from '@/db/schema';
+import { and, eq } from 'drizzle-orm';
 
 // Get blogs in category
 export async function GET(
@@ -14,19 +16,11 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const categoryBlogs = await prisma.bookmark_category.findUnique({
-      where: {
-        id: params.categoryId,
-      },
-      include: {
-        category_blog: {
-          include: {
-            blog: true,
-          },
-        },
-      },
-    });
-
+    const categoryBlogs = await db
+      .select()
+      .from(bookmarkCategoryBlogs)
+      .where(eq(bookmarkCategoryBlogs.categoryId, params.categoryId))
+      .leftJoin(blogs, eq(bookmarkCategoryBlogs.blogId, blogs.id));
     return NextResponse.json({ categoryBlogs });
   } catch (error) {
     return NextResponse.json(
@@ -49,16 +43,16 @@ export async function PATCH(
 
     const { title, description } = await req.json();
 
-    const updatedCategory = await prisma.bookmark_category.update({
-      where: {
-        id: params.categoryId,
-        userId: session.user.id,
-      },
-      data: {
-        title,
-        description,
-      },
-    });
+    const updatedCategory = await db
+      .update(bookmarkCategories)
+      .set({ title, description })
+      .where(
+        and(
+          eq(bookmarkCategories.id, params.categoryId),
+          eq(bookmarkCategories.userId, session.user.id)
+        )
+      )
+      .returning();
 
     return NextResponse.json({ category: updatedCategory });
   } catch (error) {
@@ -80,12 +74,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await prisma.bookmark_category.delete({
-      where: {
-        id: params.categoryId,
-        userId: session.user.id,
-      },
-    });
+    await db
+      .delete(bookmarkCategories)
+      .where(
+        and(
+          eq(bookmarkCategories.id, params.categoryId),
+          eq(bookmarkCategories.userId, session.user.id)
+        )
+      );
 
     return NextResponse.json({ message: 'Category deleted successfully' });
   } catch (error) {

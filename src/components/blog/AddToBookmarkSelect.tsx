@@ -23,7 +23,6 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 import AddIcon from '@mui/icons-material/Add';
 import { useSession } from 'next-auth/react';
 import { AcceptedMethods, useFetch } from '@/hooks/useFetch';
-import { bookmark_category } from '@prisma/client';
 
 interface Category {
   id: string;
@@ -72,7 +71,7 @@ export default function AddToBookmarkSelect({ blogId, isBookmarked }: Props) {
     method: AcceptedMethods.DELETE,
   });
   const { doFetch: createCategoryFetch, dataRef: createCategoryData } =
-    useFetch<{ category: bookmark_category }>({
+    useFetch<{ category: typeof bookmarkCategories.$inferSelect }>({
       url: '/api/bookmark/category',
       method: AcceptedMethods.POST,
     });

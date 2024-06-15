@@ -2,17 +2,13 @@ import NextAuth, { NextAuthOptions, User } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import GithubProvider from 'next-auth/providers/github';
-import prisma from '@prisma_client/prisma';
 import { compare, hash } from 'bcrypt';
 import { generateFromEmail } from 'unique-username-generator';
-import { PrismaAdapter } from '@next-auth/prisma-adapter';
-
-const createUserProfile = async (user: Partial<User> & { id: string }) => {
-  await prisma.user_Profile.create({
-    data: { userId: user.id },
-  });
-};
-
+import { db } from '@/db/drizzle';
+import { DrizzleAdapter } from '@auth/drizzle-adapter';
+import { getUserByEmail, createUser } from '@/db_access/user';
+import { createAccount } from '@/db_access/account';
+import { createUserProfile } from '@/db_access/profile';
 export const authOptions: NextAuthOptions = {
   theme: {
     colorScheme: 'dark',
@@ -22,9 +18,7 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       async profile(profile, tokens) {
-        const user = await prisma.user.findUnique({
-          where: { email: profile.email },
-        });
+        const user = await getUserByEmail(profile.email);
         return { ...profile, username: user?.username };
       },
       authorization: {
@@ -39,9 +33,7 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
       async profile(profile, tokens) {
-        const user = await prisma.user.findUnique({
-          where: { email: profile.email },
-        });
+        const user = await getUserByEmail(profile.email);
         return { ...profile, username: user?.username };
       },
     }),
@@ -59,9 +51,7 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
-          });
+          const user = await getUserByEmail(credentials.email);
 
           if (!user || !user.password) {
             return null;
@@ -77,11 +67,11 @@ export const authOptions: NextAuthOptions = {
           }
 
           return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            image: user.image,
-            username: user.username,
+            id: user?.id,
+            name: user?.name,
+            email: user?.email,
+            image: user?.image,
+            username: user?.username,
           };
         } catch (error) {
           console.error('Authorize error:', error);
@@ -90,7 +80,7 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  adapter: PrismaAdapter(prisma),
+  adapter: DrizzleAdapter(db),
   pages: {
     signIn: '/auth/signin',
     error: '/auth/error',
@@ -103,33 +93,35 @@ export const authOptions: NextAuthOptions = {
       if (!userEmail) {
         return false;
       }
-      const existingUser = await prisma.user.findUnique({
-        where: { email: userEmail },
-      });
+      const existingUser = await getUserByEmail(userEmail);
       if (!existingUser) {
-        const newUser = await prisma.user.create({
-          data: {
-            email: userEmail,
-            name: profile?.name || user?.name!,
-            image: profile?.image || user?.image!,
-            username: generateFromEmail(userEmail!),
-          },
+        await db.transaction(async (tx) => {
+          const newUser = await createUser(
+            {
+              email: userEmail,
+              name: profile?.name || user?.name!,
+              image: profile?.image || user?.image!,
+              username: generateFromEmail(userEmail!),
+            },
+            tx
+          );
+          await createAccount(
+            {
+              userId: newUser[0]?.id,
+              type: account?.provider,
+              refreshToken: account?.refresh_token,
+              accessToken: account?.access_token,
+              tokenType: account?.token_type,
+              expiresAt: account?.expires_at,
+              scope: account?.scope,
+              idToken: account?.id_token,
+              provider: account?.provider!,
+              providerAccountId: account?.providerAccountId!,
+            },
+            tx
+          );
+          await createUserProfile(newUser[0], tx);
         });
-        const newAccount = await prisma.account.create({
-          data: {
-            userId: newUser.id,
-            type: account?.provider,
-            refresh_token: account?.refresh_token,
-            access_token: account?.access_token,
-            token_type: account?.token_type,
-            expires_at: account?.expires_at,
-            scope: account?.scope,
-            id_token: account?.id_token,
-            provider: account?.provider!,
-            providerAccountId: account?.providerAccountId!,
-          },
-        });
-        await createUserProfile(newUser);
         return true;
       }
       return !!existingUser;

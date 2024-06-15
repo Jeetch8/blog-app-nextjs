@@ -1,47 +1,50 @@
-import PrismaClient from '@prisma_client/prisma';
-import { User } from '@prisma/client';
+import { db } from '@/db/drizzle';
+import { eq, and } from 'drizzle-orm';
+import {
+  bookmarkCategories,
+  bookmarkCategoryBlogs,
+  blogs,
+  blogsRelations,
+  users,
+  blogLikes,
+} from '@/db/schema';
+import { desc } from 'drizzle-orm';
 
 export async function createBookmarkCategory(
   title: string,
-  description: string,
+  description: string | undefined,
   userId: string
 ) {
-  return await PrismaClient.bookmark_category.create({
-    data: {
+  return await db
+    .insert(bookmarkCategories)
+    .values({
       title,
       description,
       userId,
-    },
-  });
+    })
+    .returning();
 }
 
 export async function deleteBookmarkCategory(categoryId: string) {
-  return await PrismaClient.bookmark_category.delete({
-    where: {
-      id: categoryId,
-    },
-    include: {
-      category_blog: true,
-    },
-  });
+  return await db
+    .delete(bookmarkCategories)
+    .where(eq(bookmarkCategories.id, categoryId))
+    .returning();
 }
 
 export async function getCategoryWithBlogs(categoryId: string, userId: string) {
-  const category = await PrismaClient.bookmark_category.findUnique({
-    where: {
-      id: categoryId,
-      userId: userId, // Ensure user owns this category
-    },
-    include: {
-      category_blog: {
-        include: {
+  return await db.query.bookmarkCategories.findFirst({
+    where: eq(bookmarkCategories.id, categoryId),
+    with: {
+      categoryBlogs: {
+        with: {
           blog: {
-            include: {
-              user: {
-                select: {
+            with: {
+              author: {
+                columns: {
                   name: true,
-                  image: true,
                   username: true,
+                  image: true,
                 },
               },
             },
@@ -50,23 +53,30 @@ export async function getCategoryWithBlogs(categoryId: string, userId: string) {
       },
     },
   });
-
-  return category;
 }
 
 export async function getAllUserCategories(userId: string) {
-  return await PrismaClient.bookmark_category.findMany({
-    where: {
-      userId,
-    },
-    include: {
-      category_blog: {
-        take: 3,
-        include: {
+  return await db.query.bookmarkCategories.findMany({
+    where: eq(bookmarkCategories.userId, userId),
+    orderBy: desc(bookmarkCategories.createdAt),
+    limit: 3,
+    with: {
+      categoryBlogs: {
+        orderBy: desc(bookmarkCategoryBlogs.createdAt),
+        with: {
           blog: {
-            select: {
-              id: true,
-              banner_img: true,
+            with: {
+              author: {
+                columns: {
+                  name: true,
+                  username: true,
+                  image: true,
+                },
+              },
+              likes: {
+                where: eq(blogLikes.userId, userId),
+                limit: 1,
+              },
             },
           },
         },
@@ -76,11 +86,10 @@ export async function getAllUserCategories(userId: string) {
 }
 
 export async function getSingleCategoryById(categoryId: string) {
-  return await PrismaClient.bookmark_category_blog.findMany({
-    where: {
-      categoryId,
-    },
-  });
+  return await db
+    .select()
+    .from(bookmarkCategoryBlogs)
+    .where(eq(bookmarkCategoryBlogs.categoryId, categoryId));
 }
 
 export async function updateCategoryInfo(
@@ -88,58 +97,56 @@ export async function updateCategoryInfo(
   title: string,
   description: string
 ) {
-  return await PrismaClient.bookmark_category.update({
-    where: {
-      id: categoryId,
-    },
-    data: {
+  return await db
+    .update(bookmarkCategories)
+    .set({
       title,
       description,
-    },
-  });
+    })
+    .where(eq(bookmarkCategories.id, categoryId))
+    .returning();
 }
 
 export async function addBlogToCategory(
+  bookmarkedByUserId: string,
   categoryId: string,
   blogId: string,
   note: string = ''
 ) {
-  return await PrismaClient.bookmark_category_blog.create({
-    data: {
+  return await db
+    .insert(bookmarkCategoryBlogs)
+    .values({
+      bookmarkedByUserId,
       categoryId,
       blogId,
       note,
-    },
-  });
+    })
+    .returning();
 }
 
 export async function removeBlogFromCategory(blogId: string) {
-  return await PrismaClient.bookmark_category_blog.delete({
-    where: {
-      id: blogId,
-    },
-  });
+  return await db
+    .delete(bookmarkCategoryBlogs)
+    .where(eq(bookmarkCategoryBlogs.id, blogId))
+    .returning();
 }
 
 export async function updateBlogNote(blogId: string, note: string) {
-  return await PrismaClient.bookmark_category_blog.update({
-    where: {
-      id: blogId,
-    },
-    data: {
+  return await db
+    .update(bookmarkCategoryBlogs)
+    .set({
       note,
-    },
-  });
+    })
+    .where(eq(bookmarkCategoryBlogs.id, blogId))
+    .returning();
 }
 
 export async function getListOfBookmarkCategories(userId: string) {
-  return await PrismaClient.bookmark_category.findMany({
-    where: {
-      userId,
-    },
-    select: {
-      id: true,
-      title: true,
-    },
-  });
+  return await db
+    .select({
+      id: bookmarkCategories.id,
+      title: bookmarkCategories.title,
+    })
+    .from(bookmarkCategories)
+    .where(eq(bookmarkCategories.userId, userId));
 }

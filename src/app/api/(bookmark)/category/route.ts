@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import prisma from '@prisma_client/prisma';
+import { db } from '@/db/drizzle';
+import { blogs, bookmarkCategories, bookmarkCategoryBlogs } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 // Get all categories
 export async function GET(req: NextRequest) {
@@ -10,20 +12,15 @@ export async function GET(req: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const categories = await prisma.bookmark_category.findMany({
-      where: {
-        userId: session.user.id,
-      },
-      include: {
-        category_blog: {
-          include: {
-            blog: true,
-          },
-        },
-      },
-    });
-
+    const categories = await db
+      .select()
+      .from(bookmarkCategories)
+      .where(eq(bookmarkCategories.userId, session.user.id))
+      .leftJoin(
+        bookmarkCategoryBlogs,
+        eq(bookmarkCategories.id, bookmarkCategoryBlogs.categoryId)
+      )
+      .leftJoin(blogs, eq(bookmarkCategoryBlogs.blogId, blogs.id));
     return NextResponse.json({ categories });
   } catch (error) {
     return NextResponse.json(
@@ -46,12 +43,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
-    const category = await prisma.bookmark_category.create({
-      data: {
-        title,
-        description,
-        userId: session.user.id,
-      },
+    const category = await db.insert(bookmarkCategories).values({
+      title,
+      description,
+      userId: session.user.id,
     });
 
     return NextResponse.json({ category });

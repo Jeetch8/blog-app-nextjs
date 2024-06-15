@@ -4,7 +4,7 @@ import RssFeedIcon from '@mui/icons-material/RssFeed';
 import NavbarMenu from './navbar/NavbarMenu';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { User } from '@prisma/client';
+import { users } from '@/db/schema';
 
 async function Navbar() {
   const session = await getServerSession(authOptions);
@@ -55,7 +55,7 @@ async function Navbar() {
           </Stack>
 
           <Box>
-            <NavbarMenu user={session?.user as User} />
+            <NavbarMenu user={session?.user as typeof users.$inferSelect} />
           </Box>
         </Stack>
       </Container>

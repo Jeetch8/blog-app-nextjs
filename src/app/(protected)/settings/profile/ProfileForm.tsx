@@ -15,7 +15,8 @@ import {
   Stack,
 } from '@mui/material';
 import { CloudUpload } from '@mui/icons-material';
-import { User, User_Profile } from '@prisma/client';
+import { User } from 'next-auth';
+import { profiles, users } from '@/db/schema';
 
 const techStackOptions = [
   'JavaScript',
@@ -70,7 +71,10 @@ type ProfileFormData = z.infer<typeof schema>;
 const ProfilePage = ({
   initialData,
 }: {
-  initialData: User & { profile: User_Profile | null };
+  initialData: {
+    user: typeof users.$inferSelect;
+    profiles: typeof profiles.$inferSelect | null;
+  };
 }) => {
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(
     null
@@ -101,25 +105,25 @@ const ProfilePage = ({
 
   useEffect(() => {
     let techStack: string[] = [];
-    if (initialData.profile?.tech_stack) {
-      techStack = initialData.profile.tech_stack.split(',');
+    if (initialData.profiles?.techStack) {
+      techStack = initialData.profiles.techStack.split(',');
     }
     const obj: ProfileFormData = {
-      fullName: initialData.name,
-      email: initialData?.email || '',
-      username: initialData?.username || '',
+      fullName: initialData.user.name || '',
+      email: initialData.user.email || '',
+      username: initialData.user.username || '',
       profileImage: undefined,
-      profileTagline: initialData.profile?.tagline || '',
-      location: initialData.profile?.location || '',
-      bio: initialData.profile?.bio || '',
+      profileTagline: initialData.profiles?.tagline || '',
+      location: initialData.profiles?.location || '',
+      bio: initialData.profiles?.bio || '',
       techStack,
-      availableFor: initialData.profile?.available_for || '',
-      websiteUrl: initialData.profile?.website_url || '',
-      twitterUrl: initialData.profile?.twitter_url || '',
-      githubUrl: initialData.profile?.github_url || '',
-      linkedinUrl: initialData.profile?.linkedin_url || '',
+      availableFor: initialData.profiles?.availableFor || '',
+      websiteUrl: initialData.profiles?.websiteUrl || '',
+      twitterUrl: initialData.profiles?.twitterUrl || '',
+      githubUrl: initialData.profiles?.githubUrl || '',
+      linkedinUrl: initialData.profiles?.linkedinUrl || '',
     };
-    setProfileImagePreview(initialData.image);
+    setProfileImagePreview(initialData.user.image || '');
     reset(obj, { keepDirty: false, keepTouched: false });
   }, [initialData]);
 

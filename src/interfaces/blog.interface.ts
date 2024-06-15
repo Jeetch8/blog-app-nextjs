@@ -1,15 +1,15 @@
-import { Blog, User } from '@prisma/client';
+import { blogs, users } from '@/db/schema';
 
 export interface IHomeBlogs {
-  blogs: Blog[];
+  blogs: (typeof blogs.$inferSelect)[];
   hasMore: boolean;
   prevPage: number;
   nextPage: number;
 }
 
-export interface IBlogPopulated extends Blog {
-  user: User;
+export type IBlogPopulated = typeof blogs.$inferSelect & {
+  user: typeof users.$inferSelect;
   hasUserLikedBlog: boolean;
   hasUserBookmarkedBlog: boolean;
   hasUserCommentedBlog: boolean;
-}
+};

@@ -1,43 +1,38 @@
-import prisma from '@prisma_client/prisma';
-import { BlogStatus } from '@prisma/client';
 import readingTime from 'reading-time';
 import redisClient from '@/lib/redis';
 import { IBlogPopulated } from '@/interfaces/blog.interface';
-import removeMd from 'remove-markdown';
 import { headers } from 'next/headers';
 import {
   createBlogStatQuery,
   findUserBlogBookmarkQuery,
   findUserBlogCommentQuery,
   findUserBlogLikeQuery,
-  incrementBlogStatQuery,
   incrementBlogViewsQuery,
   getBlogStatQuery,
   createReadingHistoryQuery,
-} from './db_calls';
+} from './blog_stat';
 import { UAParser } from 'ua-parser-js';
-
-interface CreateBlogData {
-  title: string;
-  markdown_content: string;
-  markdown_file_url: string;
-  markdown_file_name: string;
-  topicId?: string;
-  banner_img: string;
-  embeddings: number[];
-}
+import { db } from '@/db/drizzle';
+import * as schema from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
+import dayjs from 'dayjs';
 
 export async function getBlogWithBlogId(blogId: string) {
-  return await prisma.blog.findFirst({
-    where: { id: blogId },
-    include: { user: { select: { image: true, name: true, username: true } } },
-  });
+  return await db
+    .select({
+      ...schema.blogs._.columns,
+      user: {
+        image: schema.users.image,
+        name: schema.users.name,
+        username: schema.users.username,
+      },
+    })
+    .from(schema.blogs)
+    .where(eq(schema.blogs.id, blogId))
+    .innerJoin(schema.users, eq(schema.users.id, schema.blogs.authorId));
 }
 
-export async function getBlogById(
-  id: string,
-  userId: string
-): Promise<IBlogPopulated> {
+export async function getBlogById(id: string, userId: string) {
   if (!userId || !id) {
     throw new Error('Invalid user or blog id');
   }
@@ -51,21 +46,20 @@ export async function getBlogById(
     await createBlogStatQuery(id);
   }
   if (cachedBlog) {
-    await Promise.all([
-      incrementBlogViewsQuery(id),
-      createReadingHistoryQuery({
-        userId,
-        blogId: id,
-        browser: parsedUserAgent.getBrowser().name || '',
-        os: parsedUserAgent.getOS().name || '',
-        device: parsedUserAgent.getDevice().type || '',
-        ip_address: headers().get('cf-connecting-ip') || '',
-        country: '',
-        region: '',
-        city: '',
-        referrer: headers().get('referer') || '',
-      }),
-    ]);
+    await db.transaction(async (tx) => {
+      await tx.execute(incrementBlogViewsQuery(id));
+      await tx.execute(
+        createReadingHistoryQuery({
+          userId,
+          blogId: id,
+          browser: parsedUserAgent.getBrowser().name || '',
+          os: parsedUserAgent.getOS().name || '',
+          device: parsedUserAgent.getDevice().type || '',
+          ipAddress: headers().get('cf-connecting-ip') || '',
+          referrer: headers().get('referer') || '',
+        })
+      );
+    });
     const blog = JSON.parse(cachedBlog);
     const updatedBlog = {
       ...blog,
@@ -76,12 +70,24 @@ export async function getBlogById(
   }
 
   const [blog, hasUserLikedBlog, hasUserBookmarkedBlog, hasUserCommentedBlog] =
-    await Promise.all([
-      incrementBlogViewsQuery(id),
-      findUserBlogLikeQuery(id, userId),
-      findUserBlogBookmarkQuery(id),
-      findUserBlogCommentQuery(id, userId),
-    ]);
+    await db.transaction(async (tx) => {
+      const blog = await tx.execute(incrementBlogViewsQuery(id));
+      const hasUserLikedBlog = await tx.execute(
+        findUserBlogLikeQuery(id, userId)
+      );
+      const hasUserBookmarkedBlog = await tx.execute(
+        findUserBlogBookmarkQuery(id)
+      );
+      const hasUserCommentedBlog = await tx.execute(
+        findUserBlogCommentQuery(id, userId)
+      );
+      return [
+        blog,
+        hasUserLikedBlog,
+        hasUserBookmarkedBlog,
+        hasUserCommentedBlog,
+      ];
+    });
 
   if (!blog) {
     throw new Error('Blog not found');
@@ -96,28 +102,23 @@ export async function getBlogById(
   return blogData;
 }
 
-export async function createBlog(data: CreateBlogData, userId: string) {
-  const short_description = removeMd(data.markdown_content);
-
-  return await prisma.blog.create({
-    data: {
-      title: data.title,
-      topicId: data.topicId || '',
-      banner_img: data.banner_img,
-      blog_status: BlogStatus.DRAFT,
-      markdown_file_url: data.markdown_file_url,
-      markdown_file_name: data.markdown_file_name,
-      embeddings: data.embeddings,
-      reading_time: readingTime(data.markdown_content).minutes,
-      short_description,
-      authorId: userId,
-      blog_stats: {
-        create: {
-          date: new Date().toISOString().split('T')[0],
-          number_of_views: 0,
-        },
-      },
-    },
+export async function createBlogAndStats(
+  data: typeof schema.blogs.$inferInsert
+) {
+  return await db.transaction(async (tx) => {
+    const blogTx = await tx
+      .insert(schema.blogs)
+      .values({
+        ...data,
+      })
+      .returning();
+    const blogStatus = await tx
+      .insert(schema.blogStats)
+      .values({
+        blogId: blogTx[0].id,
+      })
+      .returning();
+    return { ...blogTx[0], blogStatus };
   });
 }
 
@@ -126,71 +127,62 @@ export async function commentOnBlog(
   value: string,
   userId: string
 ) {
-  const [blogComment] = await Promise.all([
-    prisma.blog_comment.create({
-      data: {
+  return await db.transaction(async (tx) => {
+    const blogComment = await tx
+      .insert(schema.blogComments)
+      .values({
         content: value,
         userId,
         blogId,
-      },
-    }),
-    prisma.blog_stat.upsert({
-      where: {
-        blogId_date: {
-          blogId,
-          date: new Date().toISOString().split('T')[0],
-        },
-      },
-      update: {
-        number_of_comments: { increment: 1 },
-      },
-      create: {
-        number_of_comments: 1,
-        date: new Date().toISOString().split('T')[0],
+      })
+      .returning();
+    await tx
+      .insert(schema.blogStats)
+      .values({
         blogId,
-      },
-    }),
-    prisma.blog.update({
-      where: { id: blogId },
-      data: {
-        number_of_comments: { increment: 1 },
-      },
-    }),
-  ]);
+        numberOfComments: 1,
+        createdAt: dayjs(new Date()).format('YYYY-MM-DD'),
+      })
+      .onConflictDoUpdate({
+        target: [schema.blogStats.blogId],
+        set: {
+          numberOfComments: sql`${schema.blogStats.numberOfComments} + 1`,
+        },
+      });
+    await tx
+      .update(schema.blogs)
+      .set({
+        numberOfComments: sql`${schema.blogs.numberOfComments} + 1`,
+      })
+      .where(eq(schema.blogs.id, blogId));
 
-  return blogComment;
+    return blogComment[0];
+  });
 }
 
 export async function likeBlog(blogId: string, userId: string) {
-  const blogLike = await prisma.blog_like.create({
-    data: {
-      userId,
-      blogId,
-    },
-  });
-
-  return blogLike;
+  return await db.insert(schema.blogLikes).values({ userId, blogId });
 }
 
 export async function getUserBookmarkCategories(userId: string) {
-  return await prisma.bookmark_category.findMany({
-    where: {
-      userId,
-    },
-    include: {
-      category_blog: {
-        include: {
-          blog: {
-            select: {
-              banner_img: true,
+  return await db.transaction(async (tx) => {
+    const categories = await tx.query.bookmarkCategories.findMany({
+      where: (categories, { eq }) => eq(categories.userId, userId),
+      with: {
+        categoryBlogs: {
+          limit: 4,
+          with: {
+            blog: {
+              columns: {
+                bannerImg: true,
+              },
             },
           },
         },
-        take: 4,
       },
-    },
-    orderBy: {
-      updatedAt: 'desc',
-    },
+      orderBy: (categories, { desc }) => [desc(categories.updatedAt)],
+    });
+
+    return categories;
   });
 }

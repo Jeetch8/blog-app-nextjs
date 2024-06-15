@@ -19,30 +19,34 @@ export default async function ListDetailPage({
     redirect('/auth/signin');
   }
 
-  const category = await getCategoryWithBlogs(params.listId, session.user.id);
-  if (!category) {
+  const data = await getCategoryWithBlogs(params.listId, session.user.id);
+  if (!data) {
     redirect('/lists');
   }
 
   return (
     <Container maxWidth="lg" sx={{ py: 4, color: 'text.primary' }}>
       <Typography variant="h4" sx={{ mb: 4 }}>
-        {category.title}
+        {data.title}
       </Typography>
-      {category.description && (
+      {data.description && (
         <Typography color="text.secondary" sx={{ mb: 4 }}>
-          {category.description}
+          {data.description}
         </Typography>
       )}
 
-      {category.category_blog.length === 0 ? (
+      {data.categoryBlogs.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 4 }}>
           <Typography color="text.secondary">No blogs bookmarked</Typography>
         </Box>
       ) : (
         <Box>
-          {category.category_blog.map((cb) => (
-            <BlogCard key={cb.id} blog={cb.blog} isBookmarked={true} />
+          {data.categoryBlogs.map((cb) => (
+            <BlogCard
+              key={cb.id}
+              data={{ blog: cb.blog, user: cb.blog.author }}
+              isBookmarked={true}
+            />
           ))}
         </Box>
       )}
