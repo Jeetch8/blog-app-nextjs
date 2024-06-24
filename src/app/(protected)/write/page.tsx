@@ -25,7 +25,7 @@ import '@mdxeditor/editor/style.css';
 import { Box, Button, Container, CircularProgress, Stack } from '@mui/material';
 import { LeafDirective } from 'mdast-util-directive';
 import { useState, useRef } from 'react';
-import useFetch from '@/hooks/useFetch';
+import { FetchStates, useFetch } from '@/hooks/useFetch';
 import Image from 'next/image';
 import CameraEnhanceIcon from '@mui/icons-material/CameraEnhance';
 import './style.css';
@@ -92,10 +92,10 @@ export default function Editor() {
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data, error, isLoading, fetchData } = useFetch<{ url: string }>(
-    '/uploads/new',
-    'POST'
-  );
+  const { fetchState, dataRef, errorRef, doFetch } = useFetch<{ url: string }>({
+    url: '/uploads/new',
+    method: 'POST',
+  });
 
   const handleCoverImageChange = async (
     e: React.ChangeEvent<HTMLInputElement>
@@ -105,7 +105,7 @@ export default function Editor() {
       setCoverImage(file);
       const formData = new FormData();
       formData.append('image', file);
-      await fetchData(formData);
+      await doFetch(formData);
     }
   };
 
@@ -114,8 +114,8 @@ export default function Editor() {
   };
 
   // Update coverImageUrl when data is received
-  if (data && data.url && !coverImageUrl) {
-    setCoverImageUrl(data.url);
+  if (dataRef.current && dataRef.current.url && !coverImageUrl) {
+    setCoverImageUrl(dataRef.current.url);
   }
 
   return (
@@ -144,10 +144,16 @@ export default function Editor() {
           <Button
             variant="outlined"
             onClick={handleCoverImageClick}
-            disabled={isLoading}
-            startIcon={isLoading ? <CircularProgress size={20} /> : null}
+            disabled={fetchState === FetchStates.LOADING}
+            startIcon={
+              fetchState === FetchStates.LOADING ? (
+                <CircularProgress size={20} />
+              ) : null
+            }
           >
-            {isLoading ? 'Uploading...' : 'Add Cover Image'}
+            {fetchState === FetchStates.LOADING
+              ? 'Uploading...'
+              : 'Add Cover Image'}
           </Button>
         )}
         {coverImageUrl && (

@@ -36,8 +36,10 @@ export const users = pgTable(
   },
   (table) => {
     return {
-      emailIdx: uniqueIndex('email_idx').on(table.email),
-      usernameIdx: uniqueIndex('username_idx').on(table.username),
+      emailIdx: uniqueIndex('email_idx').on(sql`lower(${table.email})`),
+      usernameIdx: uniqueIndex('username_idx').on(
+        sql`lower(${table.username})`
+      ),
     };
   }
 );
@@ -54,6 +56,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   comments: many(blogComments),
   readingHistories: many(readingHistories),
   blogsAuthored: many(blogs),
+  feedHistory: many(feedHistory),
 }));
 
 export const profiles = pgTable('profiles', {
@@ -464,4 +467,46 @@ export const blogsRelations = relations(blogs, ({ one, many }) => ({
   readingHistories: many(readingHistories),
   categoryBlogs: many(bookmarkCategoryBlogs),
   stats: many(blogStats),
+  feedHistory: many(feedHistory),
+}));
+
+// Add the new feedHistory table
+export const feedHistory = pgTable(
+  'feed_history',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    blogId: text('blog_id')
+      .notNull()
+      .references(() => blogs.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: false })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: false })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    // Add an index for faster queries on user's feed history
+    userBlogIdx: index('feed_history_user_blog_idx').on(
+      table.userId,
+      table.blogId
+    ),
+  })
+);
+
+// Add relations for feedHistory
+export const feedHistoryRelations = relations(feedHistory, ({ one }) => ({
+  user: one(users, {
+    fields: [feedHistory.userId],
+    references: [users.id],
+  }),
+  blog: one(blogs, {
+    fields: [feedHistory.blogId],
+    references: [blogs.id],
+  }),
 }));

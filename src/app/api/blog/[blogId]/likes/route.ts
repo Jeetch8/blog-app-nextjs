@@ -18,7 +18,7 @@ export async function GET(
     const likes = await db.query.blogLikes.findMany({
       where: eq(blogLikes.blogId, params.blogId),
       with: {
-        user: {
+        userThatLiked: {
           columns: {
             name: true,
             image: true,
@@ -72,7 +72,7 @@ export async function PATCH(
     const likeWithUser = await db.query.blogLikes.findFirst({
       where: eq(blogLikes.id, like.id),
       with: {
-        user: {
+        userThatLiked: {
           columns: {
             name: true,
             image: true,

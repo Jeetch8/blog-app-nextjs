@@ -4,6 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/db/drizzle';
 import { blogs, bookmarkCategories, bookmarkCategoryBlogs } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
+import { getBookmarkCategoryBlogsPS } from '@/app/api/_utils/preparedStatments';
 
 // Get blogs in category
 export async function GET(
@@ -16,11 +17,17 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const categoryBlogs = await db
-      .select()
-      .from(bookmarkCategoryBlogs)
-      .where(eq(bookmarkCategoryBlogs.categoryId, params.categoryId))
-      .leftJoin(blogs, eq(bookmarkCategoryBlogs.blogId, blogs.id));
+    // const categoryBlogs = await db
+    //   .select()
+    //   .from(bookmarkCategoryBlogs)
+    //   .where(eq(bookmarkCategoryBlogs.categoryId, params.categoryId))
+    //   .leftJoin(blogs, eq(bookmarkCategoryBlogs.blogId, blogs.id))
+    //   .limit(4);
+
+    const categoryBlogs = await getBookmarkCategoryBlogsPS.execute({
+      categoryId: params.categoryId,
+    });
+
     return NextResponse.json({ categoryBlogs });
   } catch (error) {
     return NextResponse.json(

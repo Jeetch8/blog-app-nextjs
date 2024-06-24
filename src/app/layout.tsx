@@ -1,12 +1,17 @@
-import { Inter } from 'next/font/google';
+import { Poppins } from 'next/font/google';
 import Provider from '@/components/providers/SessionProvider';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v14-appRouter';
-import { CssBaseline, ThemeProvider } from '@mui/material';
+import { Box, CssBaseline } from '@mui/material';
 import theme from '@/theme';
 import '@/app/globals.css';
 import { Toaster } from 'react-hot-toast';
+import { ThemeProvider } from '@mui/material/styles';
+import { BookmarkCategoryModalProvider } from '@/components/context/BookmarkCategoryModalContext';
 
-const inter = Inter({ subsets: ['latin'] });
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
+});
 
 export const metadata = {
   title: 'NextJs 14 App Router and NextAuth',
@@ -19,16 +24,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className} style={{ background: '#192231' }}>
-        <AppRouterCacheProvider>
-          <ThemeProvider theme={theme}>
-            <Provider>{children}</Provider>
+    <ThemeProvider theme={theme}>
+      <html lang="en">
+        <body className={poppins.className}>
+          <AppRouterCacheProvider>
+            <Provider>
+              <BookmarkCategoryModalProvider>
+                <Box
+                  sx={{
+                    background: 'background.default',
+                    position: 'relative',
+                  }}
+                >
+                  {children}
+                </Box>
+              </BookmarkCategoryModalProvider>
+            </Provider>
             <CssBaseline enableColorScheme />
-          </ThemeProvider>
-        </AppRouterCacheProvider>
-        <Toaster />
-      </body>
-    </html>
+          </AppRouterCacheProvider>
+          <Toaster />
+        </body>
+      </html>
+    </ThemeProvider>
   );
 }

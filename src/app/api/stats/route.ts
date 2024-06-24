@@ -5,8 +5,12 @@ import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { db } from '@/db/drizzle';
 import { blogs, blogStats, readingHistories } from '@/db/schema';
-import { and, eq, gte, lte } from 'drizzle-orm';
+import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { blogs as BlogType } from '@/db/schema';
+import {
+  getAllUserBlogsPS,
+  getAllUserBlogsWithReadingHistoryAndStatsPS,
+} from '../_utils/preparedStatments';
 
 dayjs.extend(isBetween);
 
@@ -61,45 +65,23 @@ export async function GET(req: NextRequest) {
       throw new Error('Unauthorized');
     }
 
+    const startDateObj = dayjs(startDate).subtract(1, 'day').toDate();
+    const endDateObj = dayjs(endDate).toDate();
+
     // Get all blogs by the user
-    const userBlogs = await db
-      .select({
-        id: blogs.id,
-        title: blogs.title,
-        numberOfComments: blogs.numberOfComments,
-        numberOfLikes: blogs.numberOfLikes,
-        numberOfViews: blogs.numberOfViews,
-        readingTime: blogs.readingTime,
-        createdAt: blogs.createdAt,
-        bannerImg: blogs.bannerImg,
-      })
-      .from(blogs)
-      .where(eq(blogs.authorId, userId));
+    const dbResults = await getAllUserBlogsWithReadingHistoryAndStatsPS.execute(
+      {
+        userId,
+        startDate: startDateObj,
+        endDate: endDateObj,
+      }
+    );
 
-    const blogIds = userBlogs.map((blog) => blog.id);
-
-    const readingHistory = await db
-      .select()
-      .from(readingHistories)
-      .where(
-        and(
-          eq(readingHistories.blogId, blogIds[0]),
-          gte(readingHistories.createdAt, new Date(endDate)),
-          lte(readingHistories.createdAt, new Date(startDate))
-        )
-      );
-
-    const stats = await db
-      .select()
-      .from(blogStats)
-      .where(
-        and(
-          eq(blogStats.blogId, blogIds[0]),
-          gte(blogStats.createdAt, new Date(endDate).toISOString()),
-          lte(blogStats.createdAt, new Date(startDate).toISOString())
-        )
-      )
-      .orderBy(blogStats.createdAt);
+    const userBlogs = dbResults.map(
+      ({ readingHistories: _a, stats: _b, ...blog }) => blog
+    );
+    const readingHistory = dbResults.flatMap((blog) => blog.readingHistories);
+    const stats = dbResults.flatMap((blog) => blog.stats);
 
     const allDates: string[] = [];
     let currentDate = dayjs(startDate);

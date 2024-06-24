@@ -1,6 +1,4 @@
-import readingTime from 'reading-time';
 import redisClient from '@/lib/redis';
-import { IBlogPopulated } from '@/interfaces/blog.interface';
 import { headers } from 'next/headers';
 import {
   createBlogStatQuery,
@@ -71,16 +69,32 @@ export async function getBlogById(id: string, userId: string) {
 
   const [blog, hasUserLikedBlog, hasUserBookmarkedBlog, hasUserCommentedBlog] =
     await db.transaction(async (tx) => {
-      const blog = await tx.execute(incrementBlogViewsQuery(id));
+      // const blog = await tx.execute(incrementBlogViewsQuery(id));
+      const blog = await tx
+        .update(schema.blogs)
+        .set({
+          numberOfViews: sql`${schema.blogs.numberOfViews} + 1`,
+        })
+        .where(eq(schema.blogs.id, id));
       const hasUserLikedBlog = await tx.execute(
         findUserBlogLikeQuery(id, userId)
       );
-      const hasUserBookmarkedBlog = await tx.execute(
-        findUserBlogBookmarkQuery(id)
-      );
-      const hasUserCommentedBlog = await tx.execute(
-        findUserBlogCommentQuery(id, userId)
-      );
+      // const hasUserBookmarkedBlog = await tx.execute(
+      //   findUserBlogBookmarkQuery(id)
+      // );
+      const hasUserBookmarkedBlog = await db
+        .select()
+        .from(schema.bookmarkCategoryBlogs)
+        .where(eq(schema.bookmarkCategoryBlogs.blogId, id))
+        .limit(1);
+      // const hasUserCommentedBlog = await tx.execute(
+      //   findUserBlogCommentQuery(id, userId)
+      // );
+      const hasUserCommentedBlog = await db
+        .select()
+        .from(schema.blogComments)
+        .where(eq(schema.blogComments.blogId, id))
+        .limit(1);
       return [
         blog,
         hasUserLikedBlog,

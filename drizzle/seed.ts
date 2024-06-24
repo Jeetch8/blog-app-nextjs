@@ -126,10 +126,10 @@ function createFakeUser(
 ): Omit<typeof users.$inferInsert, 'id'> {
   return {
     name: faker.person.fullName(),
-    email: faker.internet.email(),
+    email: faker.internet.email().toLowerCase(),
     password: hashedPassword,
     image: faker.image.avatar(),
-    username: faker.internet.username(),
+    username: faker.internet.username().toLowerCase(),
     emailVerified: null,
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
@@ -390,7 +390,7 @@ async function seedFakeData() {
           email: 'guest@example.com',
           password: await hash('Password!@12', 10),
           image: faker.image.avatar(),
-          username: faker.internet.username(),
+          username: faker.internet.username().toLowerCase(),
           emailVerified: null,
           createdAt: faker.date.past(),
           updatedAt: faker.date.past(),

@@ -6,8 +6,7 @@ import BlogCard from '@/components/blog/BlogCard';
 import { getCategoryWithBlogs } from '@/db_access/bookmark';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import dayjs from 'dayjs';
-
-dayjs.extend(relativeTime);
+import { IHomeBlog } from '../../home/page';
 
 export default async function ListDetailPage({
   params,
@@ -42,11 +41,7 @@ export default async function ListDetailPage({
       ) : (
         <Box>
           {data.categoryBlogs.map((cb) => (
-            <BlogCard
-              key={cb.id}
-              data={{ blog: cb.blog, user: cb.blog.author }}
-              isBookmarked={true}
-            />
+            <BlogCard key={cb.id} data={cb.blog} isBookmarked={true} />
           ))}
         </Box>
       )}

@@ -1,9 +1,9 @@
 import { Container, Typography, Box, Button } from '@mui/material';
 import BookmarkCategoryCard from '@/components/blog/BookmarkCategoryCard';
-import BookmarkCategoryModal from '@/components/Modals/BookmarkCategoryModal';
 import { getUserBookmarkCategories } from '@/db_access/blog';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getServerSession } from 'next-auth';
+import CreateNewCatgoryModal from './Comp';
 
 export default async function ListsPage() {
   const session = await getServerSession(authOptions);
@@ -14,7 +14,7 @@ export default async function ListsPage() {
     <Container maxWidth="lg" sx={{ py: 4, color: 'text.primary' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
         <Typography variant="h4">Your Library</Typography>
-        <BookmarkCategoryModal />
+        <CreateNewCatgoryModal />
       </Box>
 
       {categories.length === 0 ? (

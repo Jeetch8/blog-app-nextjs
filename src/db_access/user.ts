@@ -28,12 +28,12 @@ export const updateUserPassword = async (email: string, password: string) => {
 };
 
 export const getUserProfilePageInfo = async (username: string) => {
-  const user = await db
+  const data = await db
     .select()
     .from(schema.users)
-    .where(eq(schema.users.username, username))
+    .where(eq(schema.users.username, username.toLowerCase()))
     .innerJoin(schema.profiles, eq(schema.users.id, schema.profiles.userId));
-  return user[0];
+  return data[0];
 };
 
 export const getUserUsername = async (username: string) => {

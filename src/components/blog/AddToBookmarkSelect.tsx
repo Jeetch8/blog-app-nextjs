@@ -1,36 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Box,
-  Button,
   Popover,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
   Checkbox,
-  Typography,
   CircularProgress,
   IconButton,
   Tooltip,
-  Modal,
-  TextField,
-  Paper,
+  Button,
 } from '@mui/material';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import AddIcon from '@mui/icons-material/Add';
 import { useSession } from 'next-auth/react';
 import { AcceptedMethods, useFetch } from '@/hooks/useFetch';
+import { useBookmarkCategoryModal } from '@/components/context/BookmarkCategoryModalContext';
 
 interface Category {
   id: string;
   title: string;
   description?: string;
-  category_blog: {
-    blogId: string;
-  }[];
+  checked: boolean;
 }
 
 interface Props {
@@ -38,65 +33,77 @@ interface Props {
   isBookmarked: boolean;
 }
 
-const modalStyle = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: 400,
-  bgcolor: 'background.paper',
-  borderRadius: 2,
-  boxShadow: 24,
-  p: 4,
-};
-
 export default function AddToBookmarkSelect({ blogId, isBookmarked }: Props) {
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
+  const [loadingCategories, setLoadingCategories] = useState<Set<string>>(
     new Set()
   );
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newCategoryTitle, setNewCategoryTitle] = useState('');
-  const [newCategoryDescription, setNewCategoryDescription] = useState('');
   const { data: session } = useSession();
+  const { openModal } = useBookmarkCategoryModal();
 
-  const { doFetch: addToCategory } = useFetch<any>({
-    url: '',
-    method: AcceptedMethods.POST,
-  });
-  const { doFetch: removeFromCategory } = useFetch<any>({
-    url: '',
-    method: AcceptedMethods.DELETE,
-  });
-  const { doFetch: createCategoryFetch, dataRef: createCategoryData } =
-    useFetch<{ category: typeof bookmarkCategories.$inferSelect }>({
-      url: '/api/bookmark/category',
-      method: AcceptedMethods.POST,
-    });
-
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/category');
-      const data = await response.json();
+  const { doFetch: fetchCategories, fetchState: categoriesLoading } = useFetch<{
+    categories: Category[];
+  }>({
+    url: `/api/category?blogId=${blogId}`,
+    method: AcceptedMethods.GET,
+    onSuccess: (data) => {
       setCategories(data.categories);
+    },
+  });
 
-      // Initialize selected categories based on existing bookmarks
-      const selected = new Set<string>();
-      data.categories.forEach((category: Category) => {
-        if (category.category_blog.some((blog) => blog.blogId === blogId)) {
-          selected.add(category.id);
-        }
+  const { doFetch: addBookmark } = useFetch<any, any>({
+    url: `/api/bookmark/category`,
+    method: AcceptedMethods.PUT,
+    onSuccess: (data: { categoryId: string }) => {
+      console.log(data);
+      setCategories((prev) =>
+        prev.map((category) =>
+          category.id === data.categoryId
+            ? { ...category, checked: !category.checked }
+            : category
+        )
+      );
+      setLoadingCategories((prev) => {
+        const next = new Set(prev);
+        next.delete(data.categoryId);
+        return next;
       });
-      setSelectedCategories(selected);
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    onError: (error: { categoryId: string }) => {
+      setLoadingCategories((prev) => {
+        const next = new Set(prev);
+        next.delete(error.categoryId);
+        return next;
+      });
+    },
+  });
+  const { doFetch: removeBookmark } = useFetch<any, any>({
+    url: `/api/bookmark/category`,
+    method: AcceptedMethods.DELETE,
+    onSuccess: (data: { categoryId: string }) => {
+      console.log(data);
+      setCategories((prev) =>
+        prev.map((category) =>
+          category.id === data.categoryId
+            ? { ...category, checked: !category.checked }
+            : category
+        )
+      );
+      setLoadingCategories((prev) => {
+        const next = new Set(prev);
+        next.delete(data.categoryId);
+        return next;
+      });
+    },
+    onError: (error: { categoryId: string }) => {
+      setLoadingCategories((prev) => {
+        const next = new Set(prev);
+        next.delete(error.categoryId);
+        return next;
+      });
+    },
+  });
 
   useEffect(() => {
     if (session?.user && anchorEl) {
@@ -113,74 +120,43 @@ export default function AddToBookmarkSelect({ blogId, isBookmarked }: Props) {
   };
 
   const handleToggleCategory = async (categoryId: string) => {
-    try {
-      if (selectedCategories.has(categoryId)) {
-        // Remove from category
-        await fetch(`/api/bookmark/category/${categoryId}/bookmark`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ blogId }),
-        });
-        selectedCategories.delete(categoryId);
-      } else {
-        // Add to category
-        await fetch(`/api/bookmark/category/${categoryId}/bookmark`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ blogId }),
-        });
-        selectedCategories.add(categoryId);
-      }
-      setSelectedCategories(new Set(selectedCategories));
-    } catch (error) {
-      console.error('Failed to update bookmark:', error);
-    }
-  };
+    const category = categories.find((c) => c.id === categoryId);
+    if (!category || loadingCategories.has(categoryId)) return;
 
-  const handleCreateCategory = async () => {
-    if (!newCategoryTitle.trim()) return;
-
-    try {
-      await createCategoryFetch({
-        title: newCategoryTitle,
-        description: newCategoryDescription,
-      });
-
-      // Add blog to the newly created category
-      await fetch(
-        `/api/bookmark/category/${createCategoryData?.current?.category.id}/bookmark`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ blogId }),
-        }
-      );
-
-      setIsCreateModalOpen(false);
-      setNewCategoryTitle('');
-      setNewCategoryDescription('');
-      fetchCategories();
-    } catch (error) {
-      console.error('Failed to create category:', error);
+    setLoadingCategories((prev) => new Set([...prev, categoryId]));
+    if (category.checked) {
+      await removeBookmark({ blogId }, `/api/category/${categoryId}/bookmark`);
+    } else {
+      await addBookmark({ blogId }, `/api/category/${categoryId}/bookmark`);
     }
   };
 
   const open = Boolean(anchorEl);
   const id = open ? 'bookmark-popover' : undefined;
 
+  useEffect(() => {
+    const handleScroll = () => {
+      if (open) {
+        handleClose();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [open]);
+
   if (!session?.user) return null;
+
+  const calcIsBookmarked = useMemo(() => {
+    if (categories.length === 0 && isBookmarked) return true;
+    return categories.some((cat) => cat.checked);
+  }, [categories, isBookmarked]);
 
   return (
     <Box>
       <Tooltip title="Add to bookmarks">
         <IconButton onClick={handleClick} color="inherit">
-          {selectedCategories.size > 0 || isBookmarked ? (
+          {calcIsBookmarked ? (
             <BookmarkIcon color="primary" />
           ) : (
             <BookmarkBorderIcon />
@@ -202,89 +178,76 @@ export default function AddToBookmarkSelect({ blogId, isBookmarked }: Props) {
           horizontal: 'right',
         }}
       >
-        <Box sx={{ width: 300, maxHeight: 400, p: 2 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Save to...
-          </Typography>
-
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : (
-            <>
-              <List sx={{ width: '100%' }}>
+        <Box
+          sx={{
+            width: 300,
+            display: 'flex',
+            flexDirection: 'column',
+            height: '400px',
+          }}
+        >
+          <Box
+            sx={{
+              flex: 1,
+              overflow: 'auto',
+              px: 2,
+              py: 1,
+            }}
+          >
+            {categoriesLoading === 'loading' ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <CircularProgress size={24} />
+              </Box>
+            ) : (
+              <List sx={{ width: '100%', color: 'text.primary' }}>
                 {categories.map((category) => (
                   <ListItem
                     key={category.id}
                     dense
                     component={Button}
                     onClick={() => handleToggleCategory(category.id)}
+                    disabled={loadingCategories.has(category.id)}
+                    sx={{
+                      width: '100%',
+                      justifyContent: 'flex-start',
+                      textAlign: 'left',
+                      opacity: loadingCategories.has(category.id) ? 0.7 : 1,
+                    }}
                   >
                     <ListItemIcon>
-                      <Checkbox
-                        edge="start"
-                        checked={selectedCategories.has(category.id)}
-                        tabIndex={-1}
-                        disableRipple
-                      />
+                      {loadingCategories.has(category.id) ? (
+                        <CircularProgress size={20} />
+                      ) : (
+                        <Checkbox
+                          edge="start"
+                          checked={category.checked}
+                          tabIndex={-1}
+                          disableRipple
+                        />
+                      )}
                     </ListItemIcon>
-                    <ListItemText
-                      primary={category.title}
-                      secondary={category.description}
-                    />
+                    <ListItemText>{category.title}</ListItemText>
                   </ListItem>
                 ))}
               </List>
-              <Button
-                startIcon={<AddIcon />}
-                onClick={() => setIsCreateModalOpen(true)}
-                fullWidth
-                sx={{ mt: 2 }}
-              >
-                Create new list
-              </Button>
-            </>
-          )}
-        </Box>
-      </Popover>
+            )}
+          </Box>
 
-      <Modal
-        open={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-      >
-        <Paper sx={modalStyle}>
-          <Typography variant="h6" sx={{ mb: 3 }}>
-            Create new list
-          </Typography>
-          <TextField
-            fullWidth
-            label="List name"
-            value={newCategoryTitle}
-            onChange={(e) => setNewCategoryTitle(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="Description (optional)"
-            value={newCategoryDescription}
-            onChange={(e) => setNewCategoryDescription(e.target.value)}
-            multiline
-            rows={2}
-            sx={{ mb: 3 }}
-          />
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-            <Button onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
+          <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
             <Button
+              startIcon={<AddIcon />}
+              onClick={() => {
+                openModal();
+                handleClose();
+              }}
+              fullWidth
               variant="contained"
-              onClick={handleCreateCategory}
-              disabled={!newCategoryTitle.trim()}
             >
-              Create
+              Create new list
             </Button>
           </Box>
-        </Paper>
-      </Modal>
+        </Box>
+      </Popover>
     </Box>
   );
 }

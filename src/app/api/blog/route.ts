@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Generate unique filename
-    const fileName = `blogs/${user[0].id}/${nanoid()}.md`;
+    const fileName = `blogs/${user.id}/${nanoid()}.md`;
 
     // Upload to S3
     const { fileUrl } = await uploadToS3(
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       markdownFileName: fileName,
       embeddings,
       shortDescription: short_description,
-      authorId: user[0].id,
+      authorId: user.id,
       blogStatus: schema.blogStatusEnum.enumValues[1],
       readingTime: readingTime.minutes,
     });

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Menu,
@@ -9,6 +9,7 @@ import {
   Avatar,
   ListItemIcon,
   Button,
+  IconButton,
 } from '@mui/material';
 import { signOut } from 'next-auth/react';
 import {
@@ -20,22 +21,11 @@ import {
   Logout,
   Login,
 } from '@mui/icons-material';
-import { users } from '@/db/schema';
-
-const settings = [
-  { title: 'Profile', path: '/profile', icon: <Person fontSize="small" /> },
-  { title: 'Write', path: '/write', icon: <Edit fontSize="small" /> },
-  {
-    title: 'Lists',
-    path: '/lists',
-    icon: <Bookmark fontSize="small" />,
-  },
-  { title: 'Stats', path: '/stats', icon: <BarChart fontSize="small" /> },
-  { title: 'Settings', path: '/settings', icon: <Settings fontSize="small" /> },
-];
+import { User } from 'next-auth';
+import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 
 interface NavbarMenuProps {
-  user: typeof users.$inferSelect;
+  user: User | undefined;
 }
 
 const NavbarMenu = ({ user }: NavbarMenuProps) => {
@@ -45,7 +35,12 @@ const NavbarMenu = ({ user }: NavbarMenuProps) => {
       <Button
         variant="outlined"
         startIcon={<Login fontSize="small" />}
-        sx={{ px: 1, color: 'text.primary', borderRadius: 4 }}
+        sx={{
+          px: 1,
+          color: 'text.primary',
+          borderRadius: 4,
+          borderWidth: 2,
+        }}
         onClick={() =>
           router.push('/auth/signin?callbackUrl=' + window.location.href)
         }
@@ -54,6 +49,34 @@ const NavbarMenu = ({ user }: NavbarMenuProps) => {
       </Button>
     );
   }
+
+  const settings = useMemo(
+    () => [
+      {
+        title: 'Profile',
+        path: `/profile/${(user as any).username}`,
+        icon: <Person fontSize="small" />,
+      },
+      { title: 'Write', path: '/write', icon: <Edit fontSize="small" /> },
+      {
+        title: 'Reading Lists',
+        path: '/lists',
+        icon: <Bookmark fontSize="small" />,
+      },
+      { title: 'Stats', path: '/stats', icon: <BarChart fontSize="small" /> },
+      {
+        title: 'My Blogs',
+        path: `/profile/${(user as any).username}/blogs`,
+        icon: <FormatListNumberedIcon fontSize="small" />,
+      },
+      {
+        title: 'Settings',
+        path: '/settings',
+        icon: <Settings fontSize="small" />,
+      },
+    ],
+    [user]
+  );
 
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(
     null
@@ -74,13 +97,12 @@ const NavbarMenu = ({ user }: NavbarMenuProps) => {
 
   return (
     <>
-      <Button
-        startIcon={<Avatar alt="User Avatar" src={user.image || undefined} />}
+      <IconButton
         onClick={handleOpenUserMenu}
-        sx={{ px: 1, color: 'text.primary', borderRadius: 4 }}
+        sx={{ color: 'text.primary', borderRadius: 4 }}
       >
-        <Typography>{user.name.toUpperCase()}</Typography>
-      </Button>
+        <Avatar alt="User Avatar" src={user.image || undefined} />
+      </IconButton>
       <Menu
         sx={{ mt: '45px' }}
         id="menu-appbar"

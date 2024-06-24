@@ -4,8 +4,5 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export default async function ProfilePage() {
   const session = await getServerSession(authOptions);
-  console.log(session);
-  redirect(
-    '/profile/@' + encodeURIComponent(session?.user?.username as string)
-  );
+  redirect('/profile/' + encodeURIComponent(session?.user?.username as string));
 }

@@ -15,16 +15,16 @@ import rehypePrism from 'rehype-prism-plus';
 import remarkGfm from 'remark-gfm';
 import { getFileFromS3 } from '@/utils/s3';
 import { createLowlight } from 'lowlight';
+import rehypeHighlight from 'rehype-highlight';
+import rehypeAutolinkHeadings from 'rehype-autolink-headings';
+import rehypeSlug from 'rehype-slug';
+import rehypeToc from 'rehype-toc';
 import js from 'highlight.js/lib/languages/javascript';
 import typescript from 'highlight.js/lib/languages/typescript';
 import jsx from 'highlight.js/lib/languages/xml';
 import tsx from 'highlight.js/lib/languages/typescript';
 import bash from 'highlight.js/lib/languages/bash';
-import rehypeHighlight from 'rehype-highlight';
-import rehypeAutolinkHeadings from 'rehype-autolink-headings';
-import rehypeSlug from 'rehype-slug';
 import CopyToClipboard from '@/components/CopyToClipboard';
-import rehypeToc from 'rehype-toc';
 import Link from 'next/link';
 import BlogLikesDrawer from '@/components/blog/BlogLikesDrawer';
 import BlogCommentsDrawer from '@/components/blog/CommentsDrawer';
@@ -93,7 +93,7 @@ export default async function BlogPage({ params }: BlogPageProps) {
     'blogs/seed/' + blog.markdown_file_name
   );
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   const fullUrl = `${baseUrl}/blog/${params.blogId}`;
 
   return (

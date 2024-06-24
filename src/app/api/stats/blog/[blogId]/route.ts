@@ -6,6 +6,7 @@ import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { NextRequest, NextResponse } from 'next/server';
 import { StatsResponse } from '../../route';
+import { getBlogStatsAndReadingHistoryPS } from '@/app/api/_utils/preparedStatments';
 
 dayjs.extend(isBetween);
 
@@ -35,29 +36,21 @@ export async function GET(req: NextRequest) {
     throw new Error('Dates must be in YYYY-MM-DD format');
   }
 
-  const stats = await db
-    .select()
-    .from(blogStats)
-    .where(
-      and(
-        eq(blogStats.blogId, blogId),
-        gte(blogStats.createdAt, new Date(startDate).toISOString()),
-        lte(blogStats.createdAt, new Date(endDate).toISOString())
-      )
-    )
-    .orderBy(blogStats.createdAt);
+  const startDateObj = dayjs(startDate).toDate();
+  const endDateObj = dayjs(endDate).toDate();
 
-  const readingHistory = await db
-    .select()
-    .from(readingHistories)
-    .where(
-      and(
-        eq(readingHistories.blogId, blogId),
-        gte(readingHistories.createdAt, new Date(startDate)),
-        lte(readingHistories.createdAt, new Date(endDate))
-      )
-    )
-    .orderBy(readingHistories.createdAt);
+  const dbResult = await getBlogStatsAndReadingHistoryPS.execute({
+    blogId,
+    startDate: startDateObj,
+    endDate: endDateObj,
+  });
+
+  const stats = dbResult
+    .filter((item) => item.stats !== null)
+    .map((item) => item.stats);
+  const readingHistory = dbResult
+    .filter((item) => item.readingHistories !== null)
+    .map((item) => item.readingHistories);
 
   const allDates: string[] = [];
   let currentDate = dayjs(startDate);

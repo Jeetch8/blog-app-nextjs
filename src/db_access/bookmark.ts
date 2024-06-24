@@ -9,6 +9,7 @@ import {
   blogLikes,
 } from '@/db/schema';
 import { desc } from 'drizzle-orm';
+import { getUserCategoriesListWithBlogsPS } from '@/app/api/_utils/preparedStatments';
 
 export async function createBookmarkCategory(
   title: string,
@@ -42,6 +43,7 @@ export async function getCategoryWithBlogs(categoryId: string, userId: string) {
             with: {
               author: {
                 columns: {
+                  id: true,
                   name: true,
                   username: true,
                   image: true,
@@ -56,33 +58,7 @@ export async function getCategoryWithBlogs(categoryId: string, userId: string) {
 }
 
 export async function getAllUserCategories(userId: string) {
-  return await db.query.bookmarkCategories.findMany({
-    where: eq(bookmarkCategories.userId, userId),
-    orderBy: desc(bookmarkCategories.createdAt),
-    limit: 3,
-    with: {
-      categoryBlogs: {
-        orderBy: desc(bookmarkCategoryBlogs.createdAt),
-        with: {
-          blog: {
-            with: {
-              author: {
-                columns: {
-                  name: true,
-                  username: true,
-                  image: true,
-                },
-              },
-              likes: {
-                where: eq(blogLikes.userId, userId),
-                limit: 1,
-              },
-            },
-          },
-        },
-      },
-    },
-  });
+  return await getUserCategoriesListWithBlogsPS.execute({ userId });
 }
 
 export async function getSingleCategoryById(categoryId: string) {

@@ -35,9 +35,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       <Typography variant="h4" sx={{ mb: 4 }}>
         Settings
       </Typography>
-      <Stack direction="row" spacing={4}>
+      <Stack direction={{ xs: 'column', tablet: 'row' }} spacing={4}>
         <Box component="nav" sx={{ width: 240, flexShrink: 0 }}>
-          <List>
+          <List sx={{ display: { xs: 'flex', tablet: 'block' }, gap: 2 }}>
             {navItems.map((item) => (
               <ListItem
                 key={item.path}
@@ -45,7 +45,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 href={item.path}
                 sx={{
                   backgroundColor:
-                    pathname === item.path ? 'action.selected' : 'transparent',
+                    pathname === item.path ? 'action.hover' : 'transparent',
                   '&:hover': {
                     backgroundColor: 'action.hover',
                   },

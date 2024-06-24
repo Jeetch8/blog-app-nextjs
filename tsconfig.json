@@ -20,6 +20,10 @@
     "jsx": "preserve",
     "incremental": true,
     "baseUrl": ".",
+    "typeRoots": [
+      "vitest/types",
+      "./node_modules/@types"
+    ],
     "plugins": [
       {
         "name": "next"

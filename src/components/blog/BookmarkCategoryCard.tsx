@@ -5,16 +5,16 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import useFetch from '@/hooks/useFetch';
+import { useFetch } from '@/hooks/useFetch';
 import Link from 'next/link';
 
 interface BookmarkCategory {
   id: string;
   title: string;
   description?: string | null;
-  category_blog: {
+  categoryBlogs: {
     blog: {
-      banner_img: string;
+      bannerImg: string;
     };
   }[];
 }
@@ -26,10 +26,10 @@ interface Props {
 export default function BookmarkCategoryCard({ category }: Props) {
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
-  const { fetchData: deleteCategory } = useFetch<any>(
-    `/api/bookmark/category/${category.id}`,
-    'DELETE'
-  );
+  const { doFetch: deleteCategory } = useFetch<any>({
+    url: `/api/bookmark/category/${category.id}`,
+    method: 'DELETE',
+  });
 
   const handleDelete = async () => {
     try {
@@ -71,7 +71,7 @@ export default function BookmarkCategoryCard({ category }: Props) {
             {category.title}
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 2 }}>
-            {category.category_blog.length} blogs
+            {category.categoryBlogs.length} blogs
           </Typography>
           <Stack direction="row" spacing={1}>
             <Tooltip title="Edit list">
@@ -95,11 +95,11 @@ export default function BookmarkCategoryCard({ category }: Props) {
         </Box>
 
         <Stack direction="row" sx={{ position: 'relative' }}>
-          {category.category_blog.slice(0, 4).map((item, index) => (
+          {category.categoryBlogs.slice(0, 4).map((item, index) => (
             <Box
               key={index}
               component="img"
-              src={item.blog.banner_img}
+              src={item.blog.bannerImg}
               alt=""
               sx={{
                 width: 100,

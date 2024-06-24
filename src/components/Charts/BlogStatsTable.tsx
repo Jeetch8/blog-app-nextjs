@@ -6,12 +6,12 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { IStatsPerBlog } from '../pages/UserStats';
+import { StatsResponse } from '@/app/api/stats/route';
 
 export default function BasicTable({
   StatsPerBlog,
 }: {
-  StatsPerBlog: IStatsPerBlog[] | undefined;
+  StatsPerBlog: StatsResponse['chartData']['blogs'] | undefined;
 }) {
   if (!StatsPerBlog) return null;
   return (
@@ -36,17 +36,15 @@ export default function BasicTable({
         <TableBody>
           {StatsPerBlog.map((row) => (
             <TableRow
-              key={row.blogId}
+              key={row?.id}
               sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
             >
-              <TableCell component="th" scope="row">
-                {row.title}
+              <TableCell component="th" scope="row?">
+                {row?.title}
               </TableCell>
-              <TableCell align="right">{row.total_number_of_views}</TableCell>
-              <TableCell align="right">{row.total_number_of_likes}</TableCell>
-              <TableCell align="right">
-                {row.total_number_of_comments}
-              </TableCell>
+              <TableCell align="right">{row?.numberOfViews}</TableCell>
+              <TableCell align="right">{row?.numberOfLikes}</TableCell>
+              <TableCell align="right">{row?.numberOfComments}</TableCell>
             </TableRow>
           ))}
         </TableBody>

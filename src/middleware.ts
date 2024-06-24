@@ -7,7 +7,9 @@ export default withAuth(
     const token = await getToken({ req: req });
     if (
       req.nextUrl.pathname.startsWith('/auth') ||
-      req.nextUrl.pathname === '/'
+      req.nextUrl.pathname === '/' ||
+      req.nextUrl.pathname === '/home' ||
+      req.nextUrl.pathname.startsWith('/images')
     ) {
       return NextResponse.next();
     }
