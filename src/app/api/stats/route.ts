@@ -3,14 +3,11 @@ import { authOptions } from '../auth/[...nextauth]/route';
 import { getServerSession } from 'next-auth';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
-import { db } from '@/db/drizzle';
-import { blogs, blogStats, readingHistories } from '@/db/schema';
-import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { blogs as BlogType } from '@/db/schema';
 import {
   getAllUserBlogsPS,
   getAllUserBlogsWithReadingHistoryAndStatsPS,
-} from '../_utils/preparedStatments';
+} from '../../../utils/preparedStatments';
 
 dayjs.extend(isBetween);
 

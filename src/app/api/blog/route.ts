@@ -14,17 +14,10 @@ import { desc, eq } from 'drizzle-orm';
 import { count } from 'drizzle-orm';
 import { db } from '@/db/drizzle';
 
-// Mock function for creating embeddings (replace with actual implementation)
-async function createEmbeddings(text: string) {
-  return Array(1536)
-    .fill(0)
-    .map(() => Math.random());
-}
-
 const blogSchema = z.object({
   title: z.string().min(1, 'Title is required').max(100),
   markdown_content: z.string().min(1, 'Content is required'),
-  topicId: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   banner_img: z.string().url('Invalid banner image URL'),
   blog_status: z.enum(['PUBLISHED', 'DRAFT']),
 });
@@ -52,7 +45,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Sanitize markdown content
     const sanitizedMarkdown = sanitizeHtml(
       validatedData?.data.markdown_content,
       {
@@ -64,39 +56,25 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    // Generate unique filename
-    const fileName = `blogs/${user.id}/${nanoid()}.md`;
-
-    // Upload to S3
-    const { fileUrl } = await uploadToS3(
-      process.env.AWS_BLOG_BUCKET_NAME!,
-      fileName,
-      sanitizedMarkdown
-    );
-
-    // Create embeddings for the blog content
-    const embeddings = await createEmbeddings(sanitizedMarkdown);
     const short_description = removeMd(sanitizedMarkdown);
     const readingTime = readingTimeFunc(sanitizedMarkdown);
 
-    // Create blog with file URL and embeddings
     const blog = await createBlogAndStats({
-      ...validatedData.data,
+      title: validatedData.data.title,
       bannerImg: validatedData.data.banner_img,
-      topicId: validatedData.data.topicId || '',
-      markdownFileUrl: fileUrl,
-      markdownFileName: fileName,
-      embeddings,
+      tags: validatedData.data.tags,
+      content: sanitizedMarkdown,
       shortDescription: short_description,
       authorId: user.id,
-      blogStatus: schema.blogStatusEnum.enumValues[1],
-      readingTime: readingTime.minutes,
+      blogStatus: validatedData.data.blog_status,
+      readingTime: Math.ceil(readingTime.minutes),
     });
+    console.log(blog);
 
     return NextResponse.json(
       {
         message: 'Blog created successfully',
-        blog,
+        blog: blog.blog,
       },
       { status: 201 }
     );

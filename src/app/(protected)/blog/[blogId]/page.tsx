@@ -47,7 +47,6 @@ interface BlogPageProps {
   };
 }
 
-// Initialize lowlight with supported languages
 const lowlight = createLowlight();
 lowlight.register('js', js);
 lowlight.register('javascript', js);
@@ -88,10 +87,10 @@ export default async function BlogPage({ params }: BlogPageProps) {
 
   if (!blog) notFound();
 
-  const markdownContent = await getFileFromS3(
-    process.env.AWS_BUCKET_NAME!,
-    'blogs/seed/' + blog.markdown_file_name
-  );
+  // const markdownContent = await getFileFromS3(
+  //   process.env.AWS_BUCKET_NAME!,
+  //   'blogs/seed/' + blog.markdown_file_name
+  // );
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
   const fullUrl = `${baseUrl}/blog/${params.blogId}`;
@@ -142,7 +141,7 @@ export default async function BlogPage({ params }: BlogPageProps) {
 
       <Box className="prose prose-invert max-w-none">
         <MDXRemote
-          source={markdownContent}
+          source={blog.content}
           components={{
             a: (props) => {
               const isHeading = props?.href?.startsWith('#');

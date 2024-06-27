@@ -21,7 +21,6 @@ import {
   blogStats,
   readingHistories,
   blogs,
-  blogTopics,
 } from '../src/db/schema';
 import dayjs from 'dayjs';
 
@@ -92,23 +91,23 @@ async function uploadMarkdownFiles(
 
 function createBlogs(
   authorId: string,
-  topicId: string,
-  markdownFile: MarkdownFile
+  blogObject: IJSONBlog
 ): Omit<typeof blogs.$inferInsert, 'id'> {
   return {
-    title: faker.lorem.sentence(),
-    markdownFileName: markdownFile.fileName,
-    markdownFileUrl: markdownFile.fileUrl,
+    title: blogObject.title,
+    // markdownFileName: markdownFile.fileName,
+    // markdownFileUrl: markdownFile.fileUrl,
+    // embeddings: createEmbeddings(markdownFile.content),
+    content: blogObject.article,
     readingTime: faker.number.int({ min: 1, max: 10 }),
-    embeddings: createEmbeddings(markdownFile.content),
     bannerImg: faker.image.urlPicsumPhotos({ width: 1080, height: 920 }),
     authorId,
-    topicId,
+    tags: blogObject?.keywords?.split(','),
     numberOfViews: faker.number.int({ min: 0, max: 1000 }),
     numberOfLikes: faker.number.int({ min: 0, max: 1000 }),
     numberOfComments: faker.number.int({ min: 0, max: 1000 }),
     blogStatus: blogStatusEnum.enumValues[0],
-    shortDescription: faker.lorem.paragraph(),
+    shortDescription: blogObject?.description?.split(' [...]')[0],
     createdAt: faker.date.past(),
     updatedAt: faker.date.past(),
   };
@@ -228,14 +227,6 @@ function createBlogComment(
   };
 }
 
-function createTopic(): Omit<typeof blogTopics.$inferInsert, 'id'> {
-  return {
-    title: faker.lorem.words(),
-    createdAt: faker.date.past(),
-    updatedAt: faker.date.past(),
-  };
-}
-
 function generateBlogStats(
   blogId: string,
   createdAt: Date
@@ -289,21 +280,12 @@ const pushUser = async () => {
   return createdUser;
 };
 
-const pushTopic = async () => {
-  const topic = createTopic();
-  const [createdTopic] = await db
-    .insert(schema.blogTopics)
-    .values(topic)
-    .returning();
-  return createdTopic;
-};
-
 const pushBlogs = async (
   authorId: string,
   topicId: string,
-  markdownFile: MarkdownFile
+  blogObject: IJSONBlog
 ) => {
-  const blog = createBlogs(authorId, topicId, markdownFile);
+  const blog = createBlogs(authorId, blogObject);
   const [createdBlog] = await db.insert(schema.blogs).values(blog).returning();
   return createdBlog;
 };
@@ -366,11 +348,26 @@ const resetTheDatabase = async () => {
   await db.delete(schema.users);
 };
 
+interface IJSONBlog {
+  _id: { $oid: string };
+  title: string;
+  datePublished: string;
+  description: string;
+  article: string;
+  keywords: string;
+}
+
 async function seedFakeData() {
   try {
     await client.connect();
     await resetTheDatabase();
-    const markdownFiles = await getAllFilesFromS3(process.env.AWS_BUCKET_NAME!);
+    // const markdownFiles = await getAllFilesFromS3(process.env.AWS_BUCKET_NAME!);
+    const JSONBlogs: IJSONBlog[] = JSON.parse(
+      await fs.readFile(
+        path.join(process.cwd(), 'seeding-data', 'article-2020.json'),
+        'utf-8'
+      )
+    );
     const userIds: string[] = [];
     const topicIds: string[] = [];
     const blogIds: string[] = [];
@@ -417,26 +414,16 @@ async function seedFakeData() {
     });
     userIds.push(guestUserData.guestUser.id);
 
-    // Create topics
-    for (let i = 0; i < 20; i++) {
-      const topic = await pushTopic();
-      topicIds.push(topic.id);
-    }
-
     // Create blogs
+    let currentJSONBlogInd = 0;
     for (let i = 0; i < userIds.length; i++) {
-      for (let j = 0; j < faker.number.int({ min: 1, max: 10 }); j++) {
+      for (let j = 0; j < faker.number.int({ min: 10, max: 50 }); j++) {
         const [blog] = await db
           .insert(schema.blogs)
-          .values(
-            createBlogs(
-              userIds[i],
-              faker.helpers.arrayElement(topicIds),
-              faker.helpers.arrayElement(markdownFiles)
-            )
-          )
+          .values(createBlogs(userIds[i], JSONBlogs[currentJSONBlogInd]))
           .returning();
         blogIds.push(blog.id);
+        currentJSONBlogInd++;
       }
     }
 

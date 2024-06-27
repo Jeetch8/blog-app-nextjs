@@ -6,17 +6,14 @@ import {
   uuid,
   pgEnum,
   index,
-  vector,
   uniqueIndex,
   date,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 
-// Enums
 export const blogStatusEnum = pgEnum('blog_status', ['PUBLISHED', 'DRAFT']);
 
-// Tables
 export const users = pgTable(
   'users',
   {
@@ -179,23 +176,6 @@ export const verificationRequests = pgTable(
   })
 );
 
-export const blogTopics = pgTable('blog_topics', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => createId()),
-  title: text('title').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: false })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: false })
-    .defaultNow()
-    .notNull(),
-});
-
-export const blogTopicsRelations = relations(blogTopics, ({ many }) => ({
-  blogs: many(blogs),
-}));
-
 export const blogs = pgTable(
   'blogs',
   {
@@ -203,8 +183,7 @@ export const blogs = pgTable(
       .primaryKey()
       .$defaultFn(() => createId()),
     title: text('title').notNull(),
-    markdownFileUrl: text('markdown_file_url').notNull(),
-    markdownFileName: text('markdown_file_name').notNull(),
+    content: text('content').notNull(),
     blogStatus: blogStatusEnum('blog_status').notNull(),
     shortDescription: text('short_description').notNull(),
     numberOfViews: integer('number_of_views').default(0).notNull(),
@@ -213,12 +192,12 @@ export const blogs = pgTable(
     authorId: uuid('author_id')
       .notNull()
       .references(() => users.id),
-    embeddings: vector('embeddings', { dimensions: 1536 }),
     readingTime: integer('reading_time').default(0).notNull(),
-    topicId: text('topic_id')
-      .notNull()
-      .references(() => blogTopics.id),
     bannerImg: text('banner_img').notNull(),
+    tags: text('tags')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
     createdAt: timestamp('created_at', { withTimezone: false })
       .defaultNow()
       .notNull(),
@@ -227,19 +206,14 @@ export const blogs = pgTable(
       .notNull(),
   },
   (table) => ({
-    embeddingIdx: index('embedding_idx').using(
-      'hnsw',
-      table.embeddings.op('vector_cosine_ops')
+    textSearchIdx: index('text_search_idx').using(
+      'gin',
+      sql`to_tsvector('english', ${table.title} || ' ' || ${table.content})`
     ),
+    // tagsIndex: index('tags_index').using('gin', sql`unnest(tags)`),
+    tagsIndex: index('tags_index').using('gin', sql`${table.tags}`),
   })
 );
-
-export const blogEmbeddingsIndex = sql`
-  CREATE INDEX IF NOT EXISTS blog_embeddings_idx 
-  ON blogs 
-  USING ivfflat (embeddings vector_cosine_ops)
-  WITH (lists = 100);
-`;
 
 export const bookmarkCategories = pgTable('bookmark_categories', {
   id: text('id')
@@ -389,7 +363,7 @@ export const readingHistories = pgTable(
     userId: uuid('user_id').references(() => users.id),
     blogId: text('blog_id')
       .notNull()
-      .references(() => blogs.id),
+      .references(() => blogs.id, { onDelete: 'cascade' }),
     referrer: text('referrer'),
     browser: text('browser'),
     os: text('os'),
@@ -429,7 +403,7 @@ export const blogStats = pgTable(
       .$defaultFn(() => createId()),
     blogId: text('blog_id')
       .notNull()
-      .references(() => blogs.id),
+      .references(() => blogs.id, { onDelete: 'cascade' }),
     numberOfViews: integer('number_of_views').default(0).notNull(),
     numberOfLikes: integer('number_of_likes').default(0).notNull(),
     numberOfComments: integer('number_of_comments').default(0).notNull(),
@@ -458,10 +432,6 @@ export const blogsRelations = relations(blogs, ({ one, many }) => ({
     fields: [blogs.authorId],
     references: [users.id],
   }),
-  topic: one(blogTopics, {
-    fields: [blogs.topicId],
-    references: [blogTopics.id],
-  }),
   comments: many(blogComments),
   likes: many(blogLikes),
   readingHistories: many(readingHistories),
@@ -470,7 +440,6 @@ export const blogsRelations = relations(blogs, ({ one, many }) => ({
   feedHistory: many(feedHistory),
 }));
 
-// Add the new feedHistory table
 export const feedHistory = pgTable(
   'feed_history',
   {
@@ -491,7 +460,6 @@ export const feedHistory = pgTable(
       .notNull(),
   },
   (table) => ({
-    // Add an index for faster queries on user's feed history
     userBlogIdx: index('feed_history_user_blog_idx').on(
       table.userId,
       table.blogId
@@ -499,7 +467,6 @@ export const feedHistory = pgTable(
   })
 );
 
-// Add relations for feedHistory
 export const feedHistoryRelations = relations(feedHistory, ({ one }) => ({
   user: one(users, {
     fields: [feedHistory.userId],

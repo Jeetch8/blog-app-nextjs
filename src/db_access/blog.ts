@@ -119,6 +119,7 @@ export async function getBlogById(id: string, userId: string) {
 export async function createBlogAndStats(
   data: typeof schema.blogs.$inferInsert
 ) {
+  console.log(data);
   return await db.transaction(async (tx) => {
     const blogTx = await tx
       .insert(schema.blogs)
@@ -132,7 +133,7 @@ export async function createBlogAndStats(
         blogId: blogTx[0].id,
       })
       .returning();
-    return { ...blogTx[0], blogStatus };
+    return { blog: blogTx[0], blogStatus };
   });
 }
 

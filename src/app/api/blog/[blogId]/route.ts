@@ -9,7 +9,14 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { blogId: string } }
 ) {
-  return NextResponse.json({ message: 'Hello, world!', blogId: params.blogId });
+  const blogId = params.blogId;
+  const blog = await db.query.blogs.findFirst({
+    where: eq(blogs.id, blogId),
+  });
+  if (!blog) {
+    return NextResponse.json({ error: 'Blog not found' }, { status: 404 });
+  }
+  return NextResponse.json(blog);
 }
 
 export async function DELETE(

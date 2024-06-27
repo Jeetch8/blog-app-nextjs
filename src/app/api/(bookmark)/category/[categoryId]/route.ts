@@ -4,7 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/db/drizzle';
 import { blogs, bookmarkCategories, bookmarkCategoryBlogs } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { getBookmarkCategoryBlogsPS } from '@/app/api/_utils/preparedStatments';
+import { getBookmarkCategoryBlogsPS } from '@/utils/preparedStatments';
 
 // Get blogs in category
 export async function GET(

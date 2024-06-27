@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/db/drizzle';
 import { bookmarkCategories } from '@/db/schema';
-import { getUserCategoriesListPS } from '@/app/api/_utils/preparedStatments';
+import { getUserCategoriesListPS } from '@/utils/preparedStatments';
 
 export async function GET(req: NextRequest) {
   try {

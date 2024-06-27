@@ -15,8 +15,9 @@ import {
   Stack,
 } from '@mui/material';
 import { CloudUpload } from '@mui/icons-material';
-import { User } from 'next-auth';
 import { profiles, users } from '@/db/schema';
+import { useFetch, FetchStates } from '@/hooks/useFetch';
+import { toast } from 'react-hot-toast';
 
 const techStackOptions = [
   'JavaScript',
@@ -68,7 +69,7 @@ const schema = z.object({
 
 type ProfileFormData = z.infer<typeof schema>;
 
-const ProfilePage = ({
+const ProfileForm = ({
   initialData,
 }: {
   initialData: {
@@ -79,6 +80,79 @@ const ProfilePage = ({
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(
     null
   );
+
+  // Add image upload fetch
+  const { doFetch: uploadImage, fetchState: imageUploadState } = useFetch<{
+    url: string;
+  }>({
+    url: '/api/uploads',
+    method: 'POST',
+    onSuccess: (data) => {
+      setProfileImagePreview(data.url);
+    },
+    onError: () => {
+      toast.error('Failed to upload image');
+    },
+  });
+
+  // Add profile update fetch
+  const { doFetch: updateProfile, fetchState: updateState } = useFetch<{
+    user: typeof users.$inferSelect;
+    profile: typeof profiles.$inferSelect;
+  }>({
+    url: `/api/user/${initialData.user.username}/profile`,
+    method: 'PUT',
+    onSuccess: (data) => {
+      toast.success('Profile updated successfully');
+      // Update form with new data
+      reset({
+        fullName: data.user.name,
+        email: data.user?.email || '',
+        username: data.user?.username || '',
+        profileTagline: data.profile?.tagline || '',
+        location: data.profile?.location || '',
+        bio: data.profile?.bio || '',
+        techStack: data.profile?.techStack?.split(',') || [],
+        availableFor: data.profile?.availableFor || '',
+        websiteUrl: data.profile?.websiteUrl || '',
+        twitterUrl: data.profile?.twitterUrl || '',
+        githubUrl: data.profile?.githubUrl || '',
+        linkedinUrl: data.profile?.linkedinUrl || '',
+      });
+    },
+    onError: () => {
+      toast.error('Failed to update profile');
+    },
+  });
+
+  const handleImageChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const formData = new FormData();
+      formData.append('image', file);
+      await uploadImage(formData);
+    }
+  };
+
+  const onSubmit = async (data: ProfileFormData) => {
+    await updateProfile({
+      name: data.fullName,
+      email: data.email,
+      username: data.username,
+      image: profileImagePreview,
+      tagline: data.profileTagline,
+      location: data.location,
+      bio: data.bio,
+      techStack: data.techStack,
+      availableFor: data.availableFor,
+      websiteUrl: data.websiteUrl,
+      twitterUrl: data.twitterUrl,
+      githubUrl: data.githubUrl,
+      linkedinUrl: data.linkedinUrl,
+    });
+  };
 
   const {
     control,
@@ -126,22 +200,6 @@ const ProfilePage = ({
     setProfileImagePreview(initialData.user.image || '');
     reset(obj, { keepDirty: false, keepTouched: false });
   }, [initialData]);
-
-  const onSubmit = (data: ProfileFormData) => {
-    console.log(data);
-    // Here you would typically send this data to your API
-  };
-
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   return (
     <Box
@@ -382,11 +440,20 @@ const ProfilePage = ({
         )}
       />
 
-      <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
-        Save Changes
+      <Button
+        type="submit"
+        fullWidth
+        variant="contained"
+        sx={{ mt: 3, mb: 2 }}
+        disabled={
+          updateState === FetchStates.LOADING ||
+          imageUploadState === FetchStates.LOADING
+        }
+      >
+        {updateState === FetchStates.LOADING ? 'Saving...' : 'Save Changes'}
       </Button>
     </Box>
   );
 };
 
-export default ProfilePage;
+export default ProfileForm;

@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { NextRequest, NextResponse } from 'next/server';
 import { StatsResponse } from '../../route';
-import { getBlogStatsAndReadingHistoryPS } from '@/app/api/_utils/preparedStatments';
+import { getBlogStatsAndReadingHistoryPS } from '@/utils/preparedStatments';
 
 dayjs.extend(isBetween);
 

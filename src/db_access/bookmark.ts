@@ -9,7 +9,7 @@ import {
   blogLikes,
 } from '@/db/schema';
 import { desc } from 'drizzle-orm';
-import { getUserCategoriesListWithBlogsPS } from '@/app/api/_utils/preparedStatments';
+import { getUserCategoriesListWithBlogsPS } from '@/utils/preparedStatments';
 
 export async function createBookmarkCategory(
   title: string,

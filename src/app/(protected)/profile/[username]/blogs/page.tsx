@@ -112,7 +112,7 @@ function BlogCard({
   const handleAction = (action: string) => {
     switch (action) {
       case 'edit':
-        router.push(`/blog/${blog.id}/edit`);
+        router.push(`/write/${blog.id}`);
         break;
       case 'view':
         router.push(`/blog/${blog.id}`);
@@ -347,17 +347,14 @@ export default function BlogsPage() {
             )}
           </CustomTabPanel>
 
-          {dataRef.current?.pagination.total &&
-            dataRef.current?.pagination.total > 1 && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                <Pagination
-                  count={dataRef.current?.pagination.total} // This should be calculated based on total count from API
-                  page={page}
-                  onChange={handlePageChange}
-                  color="primary"
-                />
-              </Box>
-            )}
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+            <Pagination
+              count={dataRef.current?.pagination.total}
+              page={page}
+              onChange={handlePageChange}
+              color="primary"
+            />
+          </Box>
         </>
       )}
     </Box>
