@@ -95,7 +95,6 @@ export const useFetch = <TData = unknown, TError = ApiError>({
           headers: fetchHeaders,
         };
         if (dataToSend) {
-          console.log(dataToSend, 'dataToSend');
           fetchOptions.body =
             dataToSend instanceof FormData
               ? dataToSend
@@ -107,12 +106,10 @@ export const useFetch = <TData = unknown, TError = ApiError>({
         const req = await fetch(url, fetchOptions);
         if (!req.ok) {
           if (req.status === 401) {
-            console.log(url, '401 redirect ' + url);
             handleUnAuthorisedAccessError();
             return;
           }
           const err = await req.json();
-          console.log(url, err, 'usefetch err');
           if (req.statusText) throw new CustomError(err.message, req.status);
         }
         const res: TData = await req.json();

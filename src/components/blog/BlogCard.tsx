@@ -30,7 +30,6 @@ export default function BlogCard({
   const createdAt = useMemo(() => {
     return dayjs(data.createdAt).fromNow();
   }, [data.createdAt]);
-  console.log(data);
 
   const cardHoverTl = useMemo(() => {
     if (!container.current) return;
@@ -79,6 +78,7 @@ export default function BlogCard({
   return (
     <Stack
       ref={container}
+      data-testid="blog-card"
       sx={{
         color: 'text.primary',
         maxWidth: '700px',

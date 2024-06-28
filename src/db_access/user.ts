@@ -33,6 +33,7 @@ export const getUserProfilePageInfo = async (username: string) => {
     .from(schema.users)
     .where(eq(schema.users.username, username.toLowerCase()))
     .innerJoin(schema.profiles, eq(schema.users.id, schema.profiles.userId));
+
   return data[0];
 };
 

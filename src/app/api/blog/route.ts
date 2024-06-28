@@ -69,7 +69,6 @@ export async function POST(req: NextRequest) {
       blogStatus: validatedData.data.blog_status,
       readingTime: Math.ceil(readingTime.minutes),
     });
-    console.log(blog);
 
     return NextResponse.json(
       {

@@ -13,7 +13,6 @@ import {
 import Image from 'next/image';
 import rehypePrism from 'rehype-prism-plus';
 import remarkGfm from 'remark-gfm';
-import { getFileFromS3 } from '@/utils/s3';
 import { createLowlight } from 'lowlight';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';

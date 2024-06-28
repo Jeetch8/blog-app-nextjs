@@ -1,7 +1,7 @@
 import React from 'react';
 import { BookmarkCategoryModalProvider } from '@/components/context/BookmarkCategoryModalContext';
 
-const template = ({ children }: { children: React.ReactNode }) => {
+const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       <BookmarkCategoryModalProvider>{children}</BookmarkCategoryModalProvider>
@@ -9,4 +9,4 @@ const template = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export default template;
+export default Layout;

@@ -73,7 +73,6 @@ export default function Editor({ params }: { params: { slug: string[] } }) {
     url: '/api/blog',
     method: 'GET',
     onSuccess: (data) => {
-      console.log(data);
       setTitle(data.title);
       setCoverImageUrl(data.bannerImg);
       editorRef.current?.setMarkdown(data.content);
@@ -94,7 +93,6 @@ export default function Editor({ params }: { params: { slug: string[] } }) {
     url: '/api/uploads',
     method: 'POST',
     onSuccess: (data) => {
-      console.log(data);
       setCoverImageUrl(data.url);
     },
     onError: (error) => {

@@ -6,7 +6,6 @@ import theme from '@/theme';
 import '@/app/globals.css';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from '@mui/material/styles';
-import { BookmarkCategoryModalProvider } from '@/components/context/BookmarkCategoryModalContext';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -29,16 +28,14 @@ export default function RootLayout({
         <body className={poppins.className}>
           <AppRouterCacheProvider>
             <Provider>
-              <BookmarkCategoryModalProvider>
-                <Box
-                  sx={{
-                    background: 'background.default',
-                    position: 'relative',
-                  }}
-                >
-                  {children}
-                </Box>
-              </BookmarkCategoryModalProvider>
+              <Box
+                sx={{
+                  background: 'background.default',
+                  position: 'relative',
+                }}
+              >
+                {children}
+              </Box>
             </Provider>
             <CssBaseline enableColorScheme />
           </AppRouterCacheProvider>
