@@ -1,23 +1,27 @@
 import {
   pgTable,
-  text,
   timestamp,
   integer,
-  uuid,
+  text,
   pgEnum,
   index,
   uniqueIndex,
   date,
+  boolean,
+  primaryKey,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
+import type { AdapterAccount } from 'next-auth/adapters';
 
 export const blogStatusEnum = pgEnum('blog_status', ['PUBLISHED', 'DRAFT']);
 
 export const users = pgTable(
-  'users',
+  'user',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => createId()),
     name: text('name').notNull(),
     username: text('username').unique(),
     email: text('email').unique(),
@@ -56,11 +60,11 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   feedHistory: many(feedHistory),
 }));
 
-export const profiles = pgTable('profiles', {
+export const profiles = pgTable('profile', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => createId()),
-  userId: uuid('user_id')
+  userId: text('user_id')
     .unique()
     .references(() => users.id, { onDelete: 'cascade' }),
   bio: text('bio'),
@@ -90,36 +94,29 @@ export const profilesRelations = relations(profiles, ({ one }) => ({
 }));
 
 export const accounts = pgTable(
-  'accounts',
+  'account',
   {
-    id: text('id')
-      .primaryKey()
-      .$defaultFn(() => createId()),
-    userId: uuid('user_id')
+    userId: text('userId')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    type: text('type'),
+    type: text('type').notNull(),
     provider: text('provider').notNull(),
-    providerAccountId: text('provider_account_id').notNull(),
-    tokenType: text('token_type'),
-    refreshToken: text('refresh_token'),
-    accessToken: text('access_token'),
-    expiresAt: integer('expires_at'),
+    providerAccountId: text('providerAccountId').notNull(),
+    refresh_token: text('refresh_token'),
+    access_token: text('access_token'),
+    expires_at: integer('expires_at'),
+    token_type: text('token_type'),
     scope: text('scope'),
-    idToken: text('id_token'),
-    createdAt: timestamp('created_at', { withTimezone: false })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: false })
-      .defaultNow()
-      .notNull(),
+    id_token: text('id_token'),
+    session_state: text('session_state'),
   },
-  (table) => ({
-    providerIdx: uniqueIndex('provider_account_idx').on(
-      table.provider,
-      table.providerAccountId
-    ),
-  })
+  (account) => [
+    {
+      compoundKey: primaryKey({
+        columns: [account.provider, account.providerAccountId],
+      }),
+    },
+  ]
 );
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
@@ -129,11 +126,11 @@ export const accountsRelations = relations(accounts, ({ one }) => ({
   }),
 }));
 
-export const sessions = pgTable('sessions', {
+export const sessions = pgTable('session', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => createId()),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
   sessionToken: text('session_token').unique().notNull(),
   accessToken: text('access_token'),
   expires: timestamp('expires').notNull(),
@@ -145,6 +142,29 @@ export const sessions = pgTable('sessions', {
     .notNull(),
 });
 
+export const authenticators = pgTable(
+  'authenticator',
+  {
+    credentialID: text('credentialID').notNull().unique(),
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    providerAccountId: text('providerAccountId').notNull(),
+    credentialPublicKey: text('credentialPublicKey').notNull(),
+    counter: integer('counter').notNull(),
+    credentialDeviceType: text('credentialDeviceType').notNull(),
+    credentialBackedUp: boolean('credentialBackedUp').notNull(),
+    transports: text('transports'),
+  },
+  (authenticator) => [
+    {
+      compositePK: primaryKey({
+        columns: [authenticator.userId, authenticator.credentialID],
+      }),
+    },
+  ]
+);
+
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, {
     fields: [sessions.userId],
@@ -153,7 +173,7 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
 }));
 
 export const verificationRequests = pgTable(
-  'verification_requests',
+  'verification_request',
   {
     id: text('id')
       .primaryKey()
@@ -177,7 +197,7 @@ export const verificationRequests = pgTable(
 );
 
 export const blogs = pgTable(
-  'blogs',
+  'blog',
   {
     id: text('id')
       .primaryKey()
@@ -189,7 +209,7 @@ export const blogs = pgTable(
     numberOfViews: integer('number_of_views').default(0).notNull(),
     numberOfLikes: integer('number_of_likes').default(0).notNull(),
     numberOfComments: integer('number_of_comments').default(0).notNull(),
-    authorId: uuid('author_id')
+    authorId: text('author_id')
       .notNull()
       .references(() => users.id),
     readingTime: integer('reading_time').default(0).notNull(),
@@ -215,13 +235,13 @@ export const blogs = pgTable(
   })
 );
 
-export const bookmarkCategories = pgTable('bookmark_categories', {
+export const bookmarkCategories = pgTable('bookmark_category', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => createId()),
   title: text('title').notNull(),
   description: text('description'),
-  userId: uuid('user_id')
+  userId: text('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: false })
@@ -243,11 +263,11 @@ export const bookmarkCategoriesRelations = relations(
   })
 );
 
-export const bookmarkCategoryBlogs = pgTable('bookmark_category_blogs', {
+export const bookmarkCategoryBlogs = pgTable('bookmark_category_blog', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => createId()),
-  bookmarkedByUserId: uuid('bookmarked_by_user_id')
+  bookmarkedByUserId: text('bookmarked_by_user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   categoryId: text('category_id')
@@ -284,12 +304,12 @@ export const bookmarkCategoryBlogsRelations = relations(
 );
 
 export const blogLikes = pgTable(
-  'blog_likes',
+  'blog_like',
   {
     id: text('id')
       .primaryKey()
       .$defaultFn(() => createId()),
-    userId: uuid('user_id')
+    userId: text('user_id')
       .notNull()
       .references(() => users.id),
     blogId: text('blog_id')
@@ -319,13 +339,13 @@ export const blogLikesRelations = relations(blogLikes, ({ one }) => ({
 }));
 
 export const blogComments = pgTable(
-  'blog_comments',
+  'blog_comment',
   {
     id: text('id')
       .primaryKey()
       .$defaultFn(() => createId()),
     content: text('content').notNull(),
-    userId: uuid('user_id')
+    userId: text('user_id')
       .notNull()
       .references(() => users.id),
     blogId: text('blog_id')
@@ -355,12 +375,12 @@ export const blogCommentsRelations = relations(blogComments, ({ one }) => ({
 }));
 
 export const readingHistories = pgTable(
-  'reading_histories',
+  'reading_history',
   {
     id: text('id')
       .primaryKey()
       .$defaultFn(() => createId()),
-    userId: uuid('user_id').references(() => users.id),
+    userId: text('user_id').references(() => users.id),
     blogId: text('blog_id')
       .notNull()
       .references(() => blogs.id, { onDelete: 'cascade' }),
@@ -396,7 +416,7 @@ export const readingHistoriesRelations = relations(
 );
 
 export const blogStats = pgTable(
-  'blog_stats',
+  'blog_stat',
   {
     id: text('id')
       .primaryKey()
@@ -446,7 +466,7 @@ export const feedHistory = pgTable(
     id: text('id')
       .primaryKey()
       .$defaultFn(() => createId()),
-    userId: uuid('user_id')
+    userId: text('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     blogId: text('blog_id')

@@ -9,6 +9,7 @@ import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { getUserByEmail, createUser } from '@/db_access/user';
 import { createAccount } from '@/db_access/account';
 import { createUserProfile } from '@/db_access/profile';
+
 export const authOptions: NextAuthOptions = {
   theme: {
     colorScheme: 'dark',
@@ -19,7 +20,7 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       async profile(profile, tokens) {
         const user = await getUserByEmail(profile.email);
-        return { ...profile, username: user?.username };
+        return { ...profile, username: user?.username, id: profile.sub };
       },
       authorization: {
         params: {
@@ -108,13 +109,12 @@ export const authOptions: NextAuthOptions = {
           await createAccount(
             {
               userId: newUser[0]?.id,
-              type: account?.provider,
-              refreshToken: account?.refresh_token,
-              accessToken: account?.access_token,
-              tokenType: account?.token_type,
-              expiresAt: account?.expires_at,
+              type: account?.provider || 'credentials',
+              refresh_token: account?.refresh_token,
+              access_token: account?.access_token,
+              expires_at: account?.expires_at,
               scope: account?.scope,
-              idToken: account?.id_token,
+              id_token: account?.id_token,
               provider: account?.provider!,
               providerAccountId: account?.providerAccountId!,
             },

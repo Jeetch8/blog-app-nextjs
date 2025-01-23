@@ -23,6 +23,7 @@ import {
   blogs,
 } from '../src/db/schema';
 import dayjs from 'dayjs';
+import type { AdapterAccount } from 'next-auth/adapters';
 
 // Initialize PostgreSQL client
 const client = new Client({
@@ -166,14 +167,12 @@ function createFakeAccount(): Omit<
     provider: 'google',
     providerAccountId: faker.string.uuid(),
     type: 'oauth',
-    tokenType: 'Bearer',
-    refreshToken: faker.string.uuid(),
-    accessToken: faker.string.uuid(),
-    expiresAt: faker.number.int({ min: 1, max: 1000000 }),
+    token_type: 'Bearer',
+    refresh_token: faker.string.uuid(),
+    access_token: faker.string.uuid(),
+    expires_at: faker.number.int({ min: 1, max: 1000000 }),
     scope: 'read:user',
-    idToken: faker.string.uuid(),
-    createdAt: faker.date.past(),
-    updatedAt: faker.date.past(),
+    id_token: faker.string.uuid(),
   };
 }
 
