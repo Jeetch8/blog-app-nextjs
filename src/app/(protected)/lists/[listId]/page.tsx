@@ -4,9 +4,6 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { redirect } from 'next/navigation';
 import BlogCard from '@/components/blog/BlogCard';
 import { getCategoryWithBlogs } from '@/db_access/bookmark';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import dayjs from 'dayjs';
-import { IHomeBlog } from '../../home/page';
 
 export default async function ListDetailPage({
   params,

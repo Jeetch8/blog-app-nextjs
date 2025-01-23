@@ -3,19 +3,7 @@ import GithubButton from '@/components/buttons/auth/GithubButton';
 import GoogleButton from '@/components/buttons/auth/GoogleButton';
 import { Container, Typography, Stack } from '@mui/material';
 
-async function getProviders() {
-  const res = await fetch(`${process.env.NEXTAUTH_URL}/api/auth/providers`);
-
-  if (!res.ok) {
-    throw new Error('Failed to fetch providers');
-  }
-  const data = await res.json();
-  return data;
-}
-
 export default async function SignUpOptions() {
-  // const resp: ReturnType<typeof getProviders> = (await getProviders()) || {};
-
   return (
     <Container
       maxWidth="sm"

@@ -37,38 +37,35 @@ const ProfilePage = async ({ params }: { params: { username: string } }) => {
           alignItems="center"
         >
           <Stack direction="row" spacing={4} alignItems="center">
-            {data?.users?.image ? (
-              <Avatar
-                src={data?.users.image}
-                sx={{ width: 150, height: 150 }}
-              />
+            {data?.user?.image ? (
+              <Avatar src={data?.user.image} sx={{ width: 150, height: 150 }} />
             ) : (
               <Avatar sx={{ width: 150, height: 150 }}>
-                {data?.users?.name?.[0]}
+                {data?.user?.name?.[0]}
               </Avatar>
             )}
             <Stack>
               <Typography variant="h4" fontWeight="bold">
-                {data?.users?.name}
+                {data?.user?.name}
               </Typography>
               <Typography variant="subtitle1" color="text.secondary">
-                @{data?.users?.username}
+                @{data?.user?.username}
               </Typography>
-              {data?.profiles?.tagline && (
+              {data?.profile?.tagline && (
                 <Typography variant="body1">
-                  {data?.profiles?.tagline}
+                  {data?.profile?.tagline}
                 </Typography>
               )}
               <Stack direction="row" spacing={2} mt={1}>
                 <Typography>
                   <strong>
-                    {numeral(data?.profiles?.followersCount).format('0a')}
+                    {numeral(data?.profile?.followersCount).format('0a')}
                   </strong>{' '}
                   followers
                 </Typography>
                 <Typography>
                   <strong>
-                    {numeral(data?.profiles?.followingCount).format('0a')}
+                    {numeral(data?.profile?.followingCount).format('0a')}
                   </strong>{' '}
                   following
                 </Typography>
@@ -81,13 +78,13 @@ const ProfilePage = async ({ params }: { params: { username: string } }) => {
         </Stack>
 
         {/* Second row */}
-        {data?.profiles?.bio && (
+        {data?.profile?.bio && (
           <Box>
             <Typography
               variant="body1"
               sx={{ display: 'flex', alignItems: 'center' }}
             >
-              <Person sx={{ mr: 1 }} /> {data?.profiles?.bio}
+              <Person sx={{ mr: 1 }} /> {data?.profile?.bio}
             </Typography>
           </Box>
         )}
@@ -99,49 +96,49 @@ const ProfilePage = async ({ params }: { params: { username: string } }) => {
           spacing={2}
           flexWrap="wrap"
         >
-          {data?.profiles?.location && (
+          {data?.profile?.location && (
             <Typography sx={{ display: 'flex', alignItems: 'center' }}>
-              <LocationOn sx={{ mr: 0.5 }} /> {data?.profiles?.location}
+              <LocationOn sx={{ mr: 0.5 }} /> {data?.profile?.location}
             </Typography>
           )}
-          {data?.profiles?.websiteUrl && (
-            <Link href={data?.profiles?.websiteUrl} passHref>
+          {data?.profile?.websiteUrl && (
+            <Link href={data?.profile?.websiteUrl} passHref>
               <Typography sx={{ display: 'flex', alignItems: 'center' }}>
                 <Language sx={{ mr: 0.5 }} /> Website
               </Typography>
             </Link>
           )}
-          {data?.profiles?.githubUrl && (
-            <Link href={data?.profiles?.githubUrl} passHref>
+          {data?.profile?.githubUrl && (
+            <Link href={data?.profile?.githubUrl} passHref>
               <Typography sx={{ display: 'flex', alignItems: 'center' }}>
                 <GitHub sx={{ mr: 0.5 }} /> GitHub
               </Typography>
             </Link>
           )}
-          {data?.profiles?.linkedinUrl && (
-            <Link href={data?.profiles?.linkedinUrl} passHref>
+          {data?.profile?.linkedinUrl && (
+            <Link href={data?.profile?.linkedinUrl} passHref>
               <Typography sx={{ display: 'flex', alignItems: 'center' }}>
                 <LinkedIn sx={{ mr: 0.5 }} /> LinkedIn
               </Typography>
             </Link>
           )}
-          {data?.profiles?.twitterUrl && (
-            <Link href={data?.profiles?.twitterUrl} passHref>
+          {data?.profile?.twitterUrl && (
+            <Link href={data?.profile?.twitterUrl} passHref>
               <Typography sx={{ display: 'flex', alignItems: 'center' }}>
                 <Twitter sx={{ mr: 0.5 }} /> Twitter
               </Typography>
             </Link>
           )}
-          {data?.profiles?.createdAt && (
+          {data?.profile?.createdAt && (
             <Typography sx={{ display: 'flex', alignItems: 'center' }}>
               <CalendarToday sx={{ mr: 0.5 }} /> Member since{' '}
-              {new Date(data?.profiles?.createdAt).toLocaleDateString()}
+              {new Date(data?.profile?.createdAt).toLocaleDateString()}
             </Typography>
           )}
         </Stack>
 
         {/* Tech stack */}
-        {data?.profiles?.techStack && (
+        {data?.profile?.techStack && (
           <Box>
             <Typography
               variant="h6"
@@ -150,7 +147,7 @@ const ProfilePage = async ({ params }: { params: { username: string } }) => {
               <Code sx={{ mr: 1 }} /> Tech Stack
             </Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap">
-              {data?.profiles?.techStack.split(',').map((tech, index) => (
+              {data?.profile?.techStack.split(',').map((tech, index) => (
                 <Chip key={index} label={tech.trim()} variant="outlined" />
               ))}
             </Stack>

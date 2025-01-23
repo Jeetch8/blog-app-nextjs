@@ -9,8 +9,8 @@ declare module '@mui/material/styles' {
     md: true;
     lg: true;
     xl: true;
-    mobile: false; // removes default breakpoint
-    tablet: true; // adds custom breakpoint at 800px
+    mobile: false;
+    tablet: true;
     laptop: false;
     desktop: false;
   }
@@ -21,7 +21,7 @@ const theme = createTheme({
     values: {
       xs: 0,
       sm: 600,
-      tablet: 800, // new breakpoint
+      tablet: 800,
       md: 900,
       lg: 1200,
       xl: 1536,
@@ -72,8 +72,8 @@ const theme = createTheme({
           dark: '#ff4081',
         },
         background: {
-          default: '#121212', // Deep black
-          paper: '#1e1e1e', // Slightly lighter black for cards/papers
+          default: '#121212',
+          paper: '#1e1e1e',
         },
         text: {
           primary: '#ffffff',
@@ -107,8 +107,3 @@ const theme = createTheme({
 });
 
 export default theme;
-
-// bg === #e5e3dc
-// link color === #e2e2dc
-// overlay  === #0a0a0a
-// font famoli roslindale display condensed

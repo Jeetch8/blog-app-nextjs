@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { getServerSession } from 'next-auth';
 import { useBookmarkCategoryModal } from '@/components/context/BookmarkCategoryModalContext';
 import { Button } from '@mui/material';
 

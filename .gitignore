@@ -8,7 +8,7 @@ ca-certificate.crt
 /.pnp
 .pnp.js
 seed-data/
-
+.vscode
 # testing
 /coverage
 
