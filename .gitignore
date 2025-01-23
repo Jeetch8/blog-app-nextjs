@@ -2,11 +2,12 @@
 .env
 /seeding-data
 /knowledge_base
-
+ca-certificate.crt
 # dependencies
 /node_modules
 /.pnp
 .pnp.js
+seed-data/
 
 # testing
 /coverage

@@ -4,23 +4,22 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
-import { unstable_cache } from 'next/cache';
 
 export const s3Client = new S3Client({
   endpoint: process.env.BLACKBLAZE_ENDPOINT!,
-  region: process.env.AWS_REGION!,
+  region: process.env.DIGITAL_OCEAN_REGION!,
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    accessKeyId: process.env.DIGITAL_OCEAN_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.DIGITAL_OCEAN_SECRET_ACCESS_KEY!,
   },
 });
 
 export async function uploadToS3(
-  bucketName: string,
   fileName: string,
   content: string,
   contentType: string = 'text/markdown'
 ) {
+  const bucketName = process.env.DIGITAL_OCEAN_BUCKET_NAME!;
   try {
     const command = new PutObjectCommand({
       Bucket: bucketName,
@@ -31,8 +30,7 @@ export async function uploadToS3(
 
     await s3Client.send(command);
 
-    // Generate URLs
-    const fileUrl = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+    const fileUrl = `https://${bucketName}.s3.${process.env.DIGITAL_OCEAN_REGION}.amazonaws.com/${fileName}`;
 
     return {
       fileUrl,

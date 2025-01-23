@@ -14,7 +14,7 @@ async function getProviders() {
 }
 
 export default async function SignUpOptions() {
-  const resp: ReturnType<typeof getProviders> = (await getProviders()) || {};
+  // const resp: ReturnType<typeof getProviders> = (await getProviders()) || {};
 
   return (
     <Container

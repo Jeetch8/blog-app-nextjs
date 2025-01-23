@@ -91,6 +91,7 @@ async function uploadMarkdownFiles(
 
 function createBlogs(
   authorId: string,
+  imageUrl: string,
   blogObject: IJSONBlog
 ): Omit<typeof blogs.$inferInsert, 'id'> {
   return {
@@ -100,7 +101,8 @@ function createBlogs(
     // embeddings: createEmbeddings(markdownFile.content),
     content: blogObject.article,
     readingTime: faker.number.int({ min: 1, max: 10 }),
-    bannerImg: faker.image.urlPicsumPhotos({ width: 1080, height: 920 }),
+    // bannerImg: faker.image.urlPicsumPhotos({ width: 1080, height: 920 }),
+    bannerImg: imageUrl,
     authorId,
     tags: blogObject?.keywords?.split(','),
     numberOfViews: faker.number.int({ min: 0, max: 1000 }),
@@ -283,9 +285,10 @@ const pushUser = async () => {
 const pushBlogs = async (
   authorId: string,
   topicId: string,
+  imageUrl: string,
   blogObject: IJSONBlog
 ) => {
-  const blog = createBlogs(authorId, blogObject);
+  const blog = createBlogs(authorId, imageUrl, blogObject);
   const [createdBlog] = await db.insert(schema.blogs).values(blog).returning();
   return createdBlog;
 };
@@ -357,14 +360,25 @@ interface IJSONBlog {
   keywords: string;
 }
 
+async function getUnsplashImages(): Promise<any[]> {
+  const JSONImages = JSON.parse(
+    await fs.readFile(
+      path.join(process.cwd(), 'drizzle', 'seed-data', 'unsplash-data.json'),
+      'utf-8'
+    )
+  );
+  return JSONImages.results;
+}
+
 async function seedFakeData() {
+  const imagesArr = await getUnsplashImages();
   try {
     await client.connect();
     await resetTheDatabase();
     // const markdownFiles = await getAllFilesFromS3(process.env.AWS_BUCKET_NAME!);
     const JSONBlogs: IJSONBlog[] = JSON.parse(
       await fs.readFile(
-        path.join(process.cwd(), 'seeding-data', 'article-2020.json'),
+        path.join(process.cwd(), 'drizzle', 'seed-data', 'article-2020.json'),
         'utf-8'
       )
     );
@@ -420,7 +434,13 @@ async function seedFakeData() {
       for (let j = 0; j < faker.number.int({ min: 10, max: 50 }); j++) {
         const [blog] = await db
           .insert(schema.blogs)
-          .values(createBlogs(userIds[i], JSONBlogs[currentJSONBlogInd]))
+          .values(
+            createBlogs(
+              userIds[i],
+              faker.helpers.arrayElement(imagesArr).urls.regular,
+              JSONBlogs[currentJSONBlogInd]
+            )
+          )
           .returning();
         blogIds.push(blog.id);
         currentJSONBlogInd++;

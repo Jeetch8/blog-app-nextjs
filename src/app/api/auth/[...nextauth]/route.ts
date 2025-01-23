@@ -2,7 +2,7 @@ import NextAuth, { NextAuthOptions, User } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import GithubProvider from 'next-auth/providers/github';
-import { compare, hash } from 'bcrypt';
+import { compare } from 'bcrypt';
 import { generateFromEmail } from 'unique-username-generator';
 import { db } from '@/db/drizzle';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
