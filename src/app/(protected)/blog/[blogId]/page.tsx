@@ -122,7 +122,7 @@ export default async function BlogPage({ params }: BlogPageProps) {
         justifyContent="center"
         spacing={2}
       >
-        <Avatar sx={{ width: 46, height: 46 }} src={blog.user.image || ''} />
+        <Avatar sx={{ width: 46, height: 46 }} src={blog?.user?.image || ''} />
         <Typography variant="subtitle1">
           <Typography
             component={Link}

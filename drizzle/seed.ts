@@ -3,10 +3,9 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Client } from 'pg';
 import { faker } from '@faker-js/faker';
 import { hash } from 'bcrypt';
-import { v4 as uuidv4 } from 'uuid';
 import { ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { s3Client, uploadToS3 } from '../src/utils/s3';
-import fs from 'fs/promises';
+import fsPromises from 'fs/promises';
 import path from 'path';
 import * as schema from '../src/db/schema';
 import {
@@ -23,7 +22,8 @@ import {
   blogs,
 } from '../src/db/schema';
 import dayjs from 'dayjs';
-import type { AdapterAccount } from 'next-auth/adapters';
+import { TUnsplashResponse } from './types';
+import fs from 'fs';
 
 // Initialize PostgreSQL client
 const client = new Client({
@@ -58,42 +58,43 @@ const sampleReferrers = [
 const sampleOperatingSystems = ['Windows', 'macOS', 'Linux', 'iOS'];
 const devices = ['android', 'desktop', 'tablet'];
 
-async function uploadMarkdownFiles(
-  folderPath: string
-): Promise<MarkdownFile[]> {
-  const files: MarkdownFile[] = [];
+// async function uploadMarkdownFiles(
+//   folderPath: string
+// ): Promise<MarkdownFile[]> {
+//   const files: MarkdownFile[] = [];
 
-  try {
-    const fileNames = await fs.readdir(folderPath);
-    for (const originalName of fileNames) {
-      if (originalName.endsWith('.md')) {
-        const filePath = path.join(folderPath, originalName);
-        const content = await fs.readFile(filePath, 'utf-8');
-        const fileName = `blogs/seed/${uuidv4()}.md`;
-        const { fileUrl } = await uploadToS3(
-          process.env.AWS_BUCKET_NAME!,
-          fileName,
-          content
-        );
-        files.push({
-          originalName,
-          fileName,
-          fileUrl,
-          content,
-        });
-      }
-    }
-    return files;
-  } catch (error) {
-    console.error('Error uploading markdown files:', error);
-    throw error;
-  }
-}
+//   try {
+//     const fileNames = await fs.readdir(folderPath);
+//     for (const originalName of fileNames) {
+//       if (originalName.endsWith('.md')) {
+//         const filePath = path.join(folderPath, originalName);
+//         const content = await fs.readFile(filePath, 'utf-8');
+//         const fileName = `blogs/seed/${uuidv4()}.md`;
+//         const { fileUrl } = await uploadToS3(
+//           process.env.AWS_BUCKET_NAME!,
+//           fileName,
+//           content
+//         );
+//         files.push({
+//           originalName,
+//           fileName,
+//           fileUrl,
+//           content,
+//         });
+//       }
+//     }
+//     return files;
+//   } catch (error) {
+//     console.error('Error uploading markdown files:', error);
+//     throw error;
+//   }
+// }
 
 function createBlogs(
   authorId: string,
   imageUrl: string,
-  blogObject: IJSONBlog
+  blogObject: IJSONBlog,
+  content: string
 ): Omit<typeof blogs.$inferInsert, 'id'> {
   return {
     title: blogObject.title,
@@ -281,16 +282,16 @@ const pushUser = async () => {
   return createdUser;
 };
 
-const pushBlogs = async (
-  authorId: string,
-  topicId: string,
-  imageUrl: string,
-  blogObject: IJSONBlog
-) => {
-  const blog = createBlogs(authorId, imageUrl, blogObject);
-  const [createdBlog] = await db.insert(schema.blogs).values(blog).returning();
-  return createdBlog;
-};
+// const pushBlogs = async (
+//   authorId: string,
+//   topicId: string,
+//   imageUrl: string,
+//   blogObject: IJSONBlog
+// ) => {
+//   const blog = createBlogs(authorId, imageUrl, blogObject);
+//   const [createdBlog] = await db.insert(schema.blogs).values(blog).returning();
+//   return createdBlog;
+// };
 
 const pushBlogComment = async (userId: string, blogId: string) => {
   const blogComment = createBlogComment(userId, blogId);
@@ -359,24 +360,229 @@ interface IJSONBlog {
   keywords: string;
 }
 
-async function getUnsplashImages(): Promise<any[]> {
-  const JSONImages = JSON.parse(
-    await fs.readFile(
-      path.join(process.cwd(), 'drizzle', 'seed-data', 'unsplash-data.json'),
-      'utf-8'
-    )
+/**
+ * Creates a well-formatted markdown article from an array of blog data and images
+ * @param data Array of blog data with article content
+ * @param imageUrls Array of image URLs to insert into the article
+ * @returns A formatted markdown article with proper syntax and structure
+ */
+const createMarkdownArticle = (
+  data: IJSONBlog[],
+  imageUrls: string[]
+): string => {
+  // Ensure we have data to work with
+  if (!data.length) {
+    return '';
+  }
+
+  let markdownContent = '';
+  let imageIndex = 0;
+
+  // Add title as main heading
+  markdownContent += `# ${data[0].title}\n\n`;
+
+  // Add publication date
+  markdownContent += `*Published on: ${new Date(
+    data[0].datePublished
+  ).toLocaleDateString()}*\n\n`;
+
+  // Add description as introduction
+  markdownContent += `## Introduction\n\n${data[0].description}\n\n`;
+
+  // Process each blog entry to create sections
+  data.forEach((blog, index) => {
+    // Create section headers for each blog entry after the first
+    if (index > 0) {
+      markdownContent += `## Section ${index}: ${blog.title}\n\n`;
+    }
+
+    // Split the article text into paragraphs
+    const paragraphs = blog.article
+      .split(/\n+/)
+      .filter((p) => p.trim().length > 0);
+
+    // Process each paragraph
+    paragraphs.forEach((paragraph, pIndex) => {
+      // Add subheadings occasionally
+      if (pIndex % 3 === 0 && pIndex > 0) {
+        markdownContent += `### ${paragraph?.split('.')[0]}.\n\n`;
+      }
+
+      // Format some paragraphs with emphasis or strong emphasis
+      if (pIndex % 5 === 0) {
+        markdownContent += `*${paragraph}*\n\n`;
+      } else if (pIndex % 7 === 0) {
+        markdownContent += `**${paragraph}**\n\n`;
+      } else {
+        markdownContent += `${paragraph}\n\n`;
+      }
+
+      // Add an image after some paragraphs
+      if (pIndex % 4 === 1 && imageIndex < imageUrls.length) {
+        markdownContent += `![Image ${imageIndex + 1}](${
+          imageUrls[imageIndex]
+        })\n\n`;
+        imageIndex = (imageIndex + 1) % imageUrls.length;
+      }
+
+      // Add blockquotes occasionally
+      if (pIndex % 6 === 0 && paragraph.length > 50) {
+        const quote = paragraph.substring(0, 50) + '...';
+        markdownContent += `> ${quote}\n\n`;
+      }
+
+      // Add a horizontal rule occasionally
+      if (pIndex % 8 === 0 && pIndex > 0) {
+        markdownContent += `---\n\n`;
+      }
+
+      // Add a list occasionally
+      if (pIndex % 9 === 0) {
+        const keywords = blog.keywords?.split(',').map((k) => k.trim());
+        if (keywords?.length > 1) {
+          markdownContent += `Related topics:\n\n`;
+          keywords.forEach((keyword) => {
+            markdownContent += `- ${keyword}\n`;
+          });
+          markdownContent += `\n`;
+        }
+      }
+    });
+
+    // Add a link to related content
+    if (index < data.length - 1) {
+      markdownContent += `[Read more about ${data[index + 1].title}](#section-${
+        index + 1
+      })\n\n`;
+    }
+  });
+
+  // Add a conclusion section
+  markdownContent += `## Conclusion\n\n`;
+  markdownContent += `This article covered various aspects of ${data[0].title}. `;
+  markdownContent += `We hope you found this information useful and insightful.\n\n`;
+
+  // Ensure the article meets the minimum length requirement (2000 characters)
+  if (markdownContent.length < 2000) {
+    markdownContent += `## Additional Information\n\n`;
+
+    // Add more content to reach the minimum length
+    while (markdownContent.length < 2000) {
+      const randomBlog = data[Math.floor(Math.random() * data.length)];
+      markdownContent += `${randomBlog.article}\n\n`;
+
+      if (imageIndex < imageUrls.length) {
+        markdownContent += `![Additional Image ${imageIndex + 1}](${
+          imageUrls[imageIndex]
+        })\n\n`;
+        imageIndex = (imageIndex + 1) % imageUrls.length;
+      }
+    }
+  }
+
+  return markdownContent;
+};
+
+const fetchImagesFromUnsplash = async (page_no: number = 1) => {
+  try {
+    const res = await fetch(
+      `https://api.unsplash.com/search/photos?page=${page_no}&per_page=30&query=nature&client_id=${process.env.UNSPLASH_ACCESS_KEY}`
+    );
+    const jsondata: TUnsplashResponse = await res.json();
+    return jsondata;
+  } catch (error) {
+    return null;
+  }
+};
+
+const getRandomImages = async (): Promise<TUnsplashResponse['results']> => {
+  const pathTofile = path.join(
+    __dirname,
+    'seed_cached_data',
+    'unsplash-data.json'
   );
-  return JSONImages.results;
+  const fileData = await fsPromises.readFile(pathTofile, {
+    encoding: 'utf8',
+  });
+  if (fileData) {
+    const jsonFileData: TUnsplashResponse = JSON.parse(fileData);
+    return jsonFileData.results;
+  } else {
+    const data = await fetchImagesFromUnsplash();
+    if (!data) throw Error('Error fetching data from Unsplash');
+    fs.writeFileSync(pathTofile, JSON.stringify(data, null, 2));
+    return data.results;
+  }
+};
+
+async function getUnsplashImages(numberOfImages: number): Promise<any[]> {
+  const filePath = path.join(
+    process.cwd(),
+    'drizzle',
+    'seed-data',
+    'unsplash-data.json'
+  );
+
+  // Check if directory exists, create if it doesn't
+  const dirPath = path.dirname(filePath);
+  try {
+    await fsPromises.access(dirPath);
+  } catch (error) {
+    await fsPromises.mkdir(dirPath, { recursive: true });
+  }
+
+  // Check if file exists
+  let allResults: any[] = [];
+  try {
+    await fsPromises.access(filePath);
+    // File exists, read and return data
+    const fileData = await fsPromises.readFile(filePath, 'utf-8');
+    const JSONImages = JSON.parse(fileData);
+    allResults = JSONImages.results;
+  } catch (error) {
+    // File doesn't exist or can't be read, fetch new data
+    console.log('Fetching images from Unsplash API...');
+  }
+
+  // If the number of images is less than required, fetch more
+  if (allResults.length < numberOfImages) {
+    const totalPages = Math.ceil((numberOfImages - allResults.length) / 30); // Calculate pages needed
+    for (let page = 1; page <= totalPages; page++) {
+      console.log(`Fetching page ${page}/${totalPages}...`);
+      const data = await fetchImagesFromUnsplash(page);
+
+      if (!data) {
+        console.error(`Failed to fetch page ${page}`);
+        continue;
+      }
+
+      allResults.push(...data.results);
+
+      // API rate limit is 50 requests/hour, so we need to be careful
+      if (allResults.length < numberOfImages && page < totalPages) {
+        console.log('Waiting 5 seconds before next request...');
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+    }
+
+    // Save the fetched data
+    await fsPromises.writeFile(
+      filePath,
+      JSON.stringify({ results: allResults }, null, 2)
+    );
+  }
+
+  return allResults.slice(0, numberOfImages); // Return only the requested number of images
 }
 
 async function seedFakeData() {
-  const imagesArr = await getUnsplashImages();
+  const imagesArr = await getUnsplashImages(1500);
   try {
     await client.connect();
     await resetTheDatabase();
     // const markdownFiles = await getAllFilesFromS3(process.env.AWS_BUCKET_NAME!);
     const JSONBlogs: IJSONBlog[] = JSON.parse(
-      await fs.readFile(
+      await fsPromises.readFile(
         path.join(process.cwd(), 'drizzle', 'seed-data', 'article-2020.json'),
         'utf-8'
       )
@@ -431,13 +637,21 @@ async function seedFakeData() {
     let currentJSONBlogInd = 0;
     for (let i = 0; i < userIds.length; i++) {
       for (let j = 0; j < faker.number.int({ min: 10, max: 50 }); j++) {
+        const blogImages = faker.helpers
+          .arrayElements(imagesArr, { min: 4, max: 10 })
+          .map((el) => el.urls.regular);
+        const blogContent = createMarkdownArticle(
+          faker.helpers.arrayElements(JSONBlogs, { min: 4, max: 10 }),
+          blogImages
+        );
         const [blog] = await db
           .insert(schema.blogs)
           .values(
             createBlogs(
               userIds[i],
               faker.helpers.arrayElement(imagesArr).urls.regular,
-              JSONBlogs[currentJSONBlogInd]
+              JSONBlogs[currentJSONBlogInd],
+              blogContent
             )
           )
           .returning();

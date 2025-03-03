@@ -21,9 +21,12 @@ export default defineConfig({
   schema: './src/db/schema.ts',
   dialect: 'postgresql',
   dbCredentials: {
-    ssl: {
-      rejectUnauthorized: false,
-    },
+    ssl:
+      process.env.NODE_ENV === 'production'
+        ? {
+            rejectUnauthorized: false,
+          }
+        : false,
     url: process.env.DATABASE_URL!,
   },
   strict: true,
